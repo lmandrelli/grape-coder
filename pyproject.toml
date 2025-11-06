@@ -7,7 +7,9 @@ authors = [
     { name = "Luca Mandrelli", email = "luca.mandrelli@icloud.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "typer>=0.20.0",
+]
 
 [project.scripts]
 grape-coder = "grape_coder:main"
