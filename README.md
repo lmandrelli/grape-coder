@@ -50,10 +50,54 @@ uv add --dev package_name  # Development dependency
 uv lock --upgrade
 ```
 
-### Running Tests
+### Testing
+
+This project uses pytest for testing. Tests are located in the `tests/` directory.
+
+**Run all tests:**
 ```bash
 uv run pytest
 ```
+
+**Run tests with verbose output:**
+```bash
+uv run pytest -v
+```
+
+**Run a specific test file:**
+```bash
+uv run pytest tests/test_basic.py
+```
+
+**Run tests with coverage:**
+```bash
+uv run pytest --cov=grape_coder
+```
+
+#### Adding New Tests
+
+1. Create test files in the `tests/` directory with names starting with `test_`
+2. Write test functions starting with `test_`
+3. Use `assert` statements for assertions
+
+**Example test file (`tests/test_example.py`):**
+```python
+def test_example_function():
+    """Example test showing basic pytest usage."""
+    result = 2 + 2
+    assert result == 4
+
+def test_another_example():
+    """Another example test."""
+    data = ["apple", "banana", "cherry"]
+    assert "banana" in data
+    assert len(data) == 3
+```
+
+**Test discovery:**
+- Pytest automatically discovers test files matching `test_*.py` pattern
+- Test functions must start with `test_`
+- Test classes must start with `Test`
 
 ### Building & Publishing
 ```bash
