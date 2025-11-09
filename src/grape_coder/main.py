@@ -7,8 +7,13 @@ app = typer.Typer(no_args_is_help=True)
 
 def version_callback(value: bool):
     if value:
+        typer.echo(""" ▗▄▄▖▗▄▄▖  ▗▄▖ ▗▄▄▖ ▗▄▄▄▖     ▗▄▄▖ ▗▄▖ ▗▄▄▄ ▗▄▄▄▖▗▄▄▖ 
+▐▌   ▐▌ ▐▌▐▌ ▐▌▐▌ ▐▌▐▌       ▐▌   ▐▌ ▐▌▐▌  █▐▌   ▐▌ ▐▌ 
+▐▌▝▜▌▐▛▀▚▖▐▛▀▜▌▐▛▀▘ ▐▛▀▀▘    ▐▌   ▐▌ ▐▌▐▌  █▐▛▀▀▘▐▛▀▚▖
+▝▚▄▞▘▐▌ ▐▌▐▌ ▐▌▐▌   ▐▙▄▄▖    ▝▚▄▄▖▝▚▄▞▘▐▙▄▄▀▐▙▄▄▖▐▌ ▐▌
+""")
         version = importlib.metadata.version("grape-coder")
-        typer.echo(version)
+        typer.echo(f"Running v{version}")
         raise typer.Exit()
 
 
