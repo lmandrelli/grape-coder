@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from grape-coder!")
+"""Grape Coder CLI package."""
