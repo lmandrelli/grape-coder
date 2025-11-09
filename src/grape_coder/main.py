@@ -12,7 +12,7 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-@app.command()
+@app.command(no_args_is_help=True)
 def main(
     arg: str = typer.Argument(..., help="Argument to greet"),
     version: Optional[bool] = typer.Option(
