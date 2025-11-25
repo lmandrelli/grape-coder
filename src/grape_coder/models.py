@@ -11,6 +11,9 @@ class MessageType(str, Enum):
     CALL_FUNCTION = "call_function"
     RESULT_FUNCTION = "result_function"
 
+    def __str__(self):
+        return self.value
+
 
 class Message(BaseModel):
     type: MessageType
@@ -24,20 +27,20 @@ class Tool(BaseModel):
     prompt: str
     function: Callable
     description: Optional[str] = None
+    # TODO: parameters (type, description)
 
     async def execute(self, **kwargs) -> Any:
         return NotImplementedError("Tool must implement execute method")
 
-
-class MCPTool(Tool):
-    server_name: str
-    server_version: Optional[str] = None
+    def to_xml_schema(self) -> str | Exception:
+        return NotImplementedError("Tool must implement to_xml_schema method")
 
 
 class Provider(BaseModel):
     model_name: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+    # TODO: decouple provider model
 
     async def generate(
         self, messages: List[Message], tools: Optional[List[Tool]] = None
@@ -49,6 +52,7 @@ class History(BaseModel):
     messages: List[Message] = Field(default_factory=list)
     max_messages: int = 50
     max_tokens: int = 8000  # Approximate token limit
+    # TODO: token should be handle by provider
 
     def add_message(self, message: Message) -> None:
         self.messages.append(message)
@@ -56,6 +60,11 @@ class History(BaseModel):
 
     def prune(self) -> None:
         """Prune messages based on count and token limits"""
+        # TODO:
+        #   remove unecessary messages
+        #   cut
+        #   summarize cut content
+
         # Always keep system messages
         system_messages = [m for m in self.messages if m.type == MessageType.SYSTEM]
 
@@ -165,30 +174,26 @@ class Agent(BaseModel):
         while True:
             # Generate response
             response = await self.provider.generate(self.history.messages, self.tools)
-
-            # Add agent response to history
             agent_message = Message(type=MessageType.AGENT, content=response)
             self.history.add_message(agent_message)
 
-            # Check for function calls in response
             from .tools import XMLFunctionParser
 
             function_calls = XMLFunctionParser.parse_function_calls(response)
 
             if not function_calls:
-                # No function calls, return the response
                 return response
 
-            # Execute function calls
             await self.handle_function_calls(function_calls)
 
     async def handle_function_calls(self, function_calls: List[Dict[str, Any]]) -> None:
         """Handle function calls from agent response"""
-        from .tools import XMLFunctionParser
 
         for call in function_calls:
             tool_name = call["tool"]
             parameters = call["parameters"]
+
+            from .tools import XMLFunctionParser
 
             # Find the tool
             tool = self.get_tool_by_name(tool_name)
