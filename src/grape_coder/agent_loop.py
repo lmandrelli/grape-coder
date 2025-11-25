@@ -1,13 +1,16 @@
 import asyncio
 import os
 
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 
 from .models import Agent, MessageType
-from .providers import MockProvider, OpenAIProvider
+from .providers import OpenAIProvider
 from .tools import BaseTool
+
+load_dotenv()
 
 
 class AgentLoop:
@@ -50,13 +53,7 @@ class AgentLoop:
                 response = await self.agent.process_user_input(user_input)
 
                 # Display agent response
-                self.console.print(
-                    Panel(
-                        response,
-                        title="[bold green]Agent[/bold green]",
-                        border_style="green",
-                    )
-                )
+                self.console.print("[bold green]Agent[/bold green]: " + response)
 
             except KeyboardInterrupt:
                 self.console.print(
@@ -143,12 +140,24 @@ Simply type your message and press Enter. The agent will respond and can use too
 def create_default_agent() -> Agent:
     """Create a default agent with basic tools"""
 
-    # Create provider (use mock for testing, OpenAI for production)
+    # Get configuration from environment variables
     api_key = os.getenv("OPENAI_API_KEY")
-    if api_key:
-        provider = OpenAIProvider(model_name="gpt-3.5-turbo", api_key=api_key)
-    else:
-        provider = MockProvider(model_name="mock")
+    base_url = os.getenv("OPENAI_BASE_URL")
+    model_name = os.getenv("OPENAI_MODEL_NAME")
+
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is required. ")
+
+    if not model_name:
+        raise ValueError("OPENAI_MODEL_NAME environment variable is required. ")
+
+    # Create OpenAI provider with environment configuration
+    provider_kwargs = {"model_name": model_name, "api_key": api_key}
+
+    if base_url:
+        provider_kwargs["base_url"] = base_url
+
+    provider = OpenAIProvider(**provider_kwargs)
 
     # Create agent
     system_prompt = """You are a helpful AI assistant with access to various tools.
@@ -200,7 +209,6 @@ def create_calculator_tool() -> BaseTool:
         name="calculator",
         prompt="Calculate mathematical expressions",
         function=calculator,
-        description="Evaluates mathematical expressions like '2+2' or '10*5'",
     )
 
 
@@ -220,7 +228,6 @@ def create_time_tool() -> BaseTool:
         name="get_time",
         prompt="Get current time",
         function=get_time,
-        description="Returns the current date and time",
     )
 
 
@@ -233,9 +240,8 @@ def create_echo_tool() -> BaseTool:
 
     return BaseTool(
         name="echo",
-        prompt="Echo a message",
+        prompt="Echo back the provided message",
         function=echo,
-        description="Repeats back the given message",
     )
 
 
