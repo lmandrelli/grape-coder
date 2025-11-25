@@ -1,0 +1,12 @@
+Double goodbye when ctrl+c
+History
+    token -> should be handle by provider
+        no estimate token
+    prune
+        remove unecessary messages
+        cut
+        summarize cut content
+decouple provider model
+tool calling
+    error xml not JSON
+    list parameters
