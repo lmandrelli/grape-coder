@@ -1,12 +1,14 @@
-Double goodbye when ctrl+c
-History
-    token -> should be handle by provider
+Double goodbye when ctrl+c type:fix
+History type:fix
+    token -> should be handle by provider type:fix,refactor
         no estimate token
     prune
         remove unecessary messages
         cut
         summarize cut content
-decouple provider model
-tool calling
+Decouple provider model type:refactor
+Tool calling type:feat
     error xml not JSON
     list parameters
+MCP tool calling type:feat
+Use LiteLLM to normalize provider type:feat
