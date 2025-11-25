@@ -10,6 +10,7 @@ class BaseTool(Tool):
 
     def to_xml_schema(self) -> str:
         """Generate XML schema for this tool"""
+        # TODO: add parameters
         return f"""
         <tool name="{self.name}">
             <description>{self.description or self.prompt}</description>
@@ -30,66 +31,6 @@ class BaseTool(Tool):
                 raise ValueError(f"Tool {self.name} function is not callable")
         except Exception as e:
             return {"error": str(e), "tool": self.name}
-
-
-class MCPClient:
-    """Model Context Protocol client for tool management"""
-
-    def __init__(self):
-        self.servers: Dict[str, Dict[str, Any]] = {}
-
-    def register_server(self, server_name: str, server_info: Dict[str, Any]):
-        """Register an MCP server"""
-        self.servers[server_name] = server_info
-
-    async def list_tools(self, server_name: str) -> List[Dict[str, Any]]:
-        """List available tools from an MCP server"""
-        if server_name not in self.servers:
-            raise ValueError(f"MCP server {server_name} not found")
-
-        # Mock implementation - in real scenario, this would connect to actual MCP server
-        server_info = self.servers[server_name]
-        return server_info.get("tools", [])
-
-    async def call_tool(
-        self, server_name: str, tool_name: str, arguments: Dict[str, Any]
-    ) -> Any:
-        """Call a tool on an MCP server"""
-        if server_name not in self.servers:
-            raise ValueError(f"MCP server {server_name} not found")
-
-        # Mock implementation
-        server_info = self.servers[server_name]
-        tools = server_info.get("tools", [])
-
-        for tool in tools:
-            if tool.get("name") == tool_name:
-                # Mock tool execution
-                return f"Executed {tool_name} with arguments: {arguments}"
-
-        raise ValueError(f"Tool {tool_name} not found on server {server_name}")
-
-
-class MCPToolWrapper(BaseTool):
-    """Wrapper for MCP tools to integrate with the tool system"""
-
-    def __init__(
-        self, server_name: str, tool_info: Dict[str, Any], mcp_client: MCPClient
-    ):
-        self.server_name = server_name
-        self.tool_info = tool_info
-        self.mcp_client = mcp_client
-
-        super().__init__(
-            name=tool_info["name"],
-            prompt=tool_info.get("description", ""),
-            function=self._execute_mcp_tool,
-            description=tool_info.get("description", ""),
-        )
-
-    async def _execute_mcp_tool(self, **kwargs) -> Any:
-        """Execute the MCP tool"""
-        return await self.mcp_client.call_tool(self.server_name, self.name, kwargs)
 
 
 class XMLFunctionParser:
