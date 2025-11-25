@@ -4,7 +4,7 @@ from typing import List, Optional
 from openai import AsyncOpenAI
 from pydantic import ConfigDict
 
-from .models import Message, Provider, Tool
+from .models import Message, MessageType, Provider, Tool
 
 
 class OpenAIProvider(Provider):
@@ -38,7 +38,15 @@ class OpenAIProvider(Provider):
                 # Add function result as assistant message
                 openai_messages.append({"role": "assistant", "content": msg.content})
             else:
-                openai_messages.append({"role": msg.type.value, "content": msg.content})
+                openai_messages.append(
+                    {
+                        "role": "assistant"
+                        if msg.type.value
+                        == MessageType.AGENT  # there is no agent role in OpenAI standard
+                        else msg.type.value,
+                        "content": msg.content,
+                    }
+                )
 
         # Prepare tools for OpenAI if provided
         openai_tools = []
@@ -50,7 +58,7 @@ class OpenAIProvider(Provider):
                         "function": {
                             "name": tool.name,
                             "description": tool.description or tool.prompt,
-                            "parameters": {
+                            "parameters": {  # TODO: should list them
                                 "type": "object",
                                 "properties": {},
                                 "required": [],
