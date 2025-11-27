@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from .models import Agent, MessageType
+from .models import Agent, MessageType, LLMModel
 from .providers import OpenAIProvider
 from .tools import BaseTool
 
@@ -150,9 +150,12 @@ def create_default_agent() -> Agent:
 
     if not model_name:
         raise ValueError("OPENAI_MODEL_NAME environment variable is required. ")
+    
+    # Create LLMModel instance
+    llm_model = LLMModel(name=model_name)
 
-    # Create OpenAI provider with environment configuration
-    provider_kwargs = {"model_name": model_name, "api_key": api_key}
+    # Create OpenAIProvider with environment configuration
+    provider_kwargs = {"model": llm_model, "api_key": api_key}
 
     if base_url:
         provider_kwargs["base_url"] = base_url
