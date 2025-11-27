@@ -69,7 +69,7 @@ class OpenAIProvider(Provider):
 
         try:
             response = await self.client.chat.completions.create(
-                model=self.model_name,
+                model=self.model.name,
                 messages=openai_messages,
                 tools=openai_tools,
                 tool_choice="auto",

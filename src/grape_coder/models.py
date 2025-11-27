@@ -3,6 +3,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+DEFAULT_MAX_TOKENS = 32000
+
 
 class MessageType(str, Enum):
     USER = "user"
@@ -36,11 +38,16 @@ class Tool(BaseModel):
         return NotImplementedError("Tool must implement to_xml_schema method")
 
 
+class LLMModel(BaseModel):
+    name: str
+    max_tokens: int = DEFAULT_MAX_TOKENS
+    description: Optional[str] = None
+
+
 class Provider(BaseModel):
-    model_name: str
+    model: LLMModel
     api_key: Optional[str] = None
     base_url: Optional[str] = None
-    # TODO: decouple provider model
 
     async def generate(
         self, messages: List[Message], tools: Optional[List[Tool]] = None
@@ -50,9 +57,8 @@ class Provider(BaseModel):
 
 class History(BaseModel):
     messages: List[Message] = Field(default_factory=list)
-    max_messages: int = 50
-    max_tokens: int = 8000  # Approximate token limit
-    # TODO: token should be handle by provider
+    max_tokens: int = DEFAULT_MAX_TOKENS
+    # TODO: not max_tokens but provider
 
     def add_message(self, message: Message) -> None:
         self.messages.append(message)
@@ -67,13 +73,6 @@ class History(BaseModel):
 
         # Always keep system messages
         system_messages = [m for m in self.messages if m.type == MessageType.SYSTEM]
-
-        # Remove messages that exceed limits
-        if len(self.messages) > self.max_messages:
-            # Keep system messages and most recent messages
-            recent_count = self.max_messages - len(system_messages)
-            recent_messages = self.messages[-recent_count:] if recent_count > 0 else []
-            self.messages = system_messages + recent_messages
 
         # Token-based pruning (rough estimation)
         total_tokens = self.estimate_tokens()
@@ -143,6 +142,8 @@ class Agent(BaseModel):
 
     def __init__(self, **data):
         super().__init__(**data)
+        # Set max_tokens from provider model
+        self.history.max_tokens = self.provider.model.max_tokens
         # Add system prompt to history
         system_message = Message(type=MessageType.SYSTEM, content=self.system_prompt)
         self.history.add_message(system_message)

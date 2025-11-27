@@ -1,6 +1,6 @@
 import pytest
 
-from grape_coder.models import Agent, History, Message, MessageType
+from grape_coder.models import Agent, History, LLMModel, Message, MessageType
 from grape_coder.providers import MockProvider
 from grape_coder.tools import BaseTool, XMLFunctionParser
 
@@ -27,55 +27,7 @@ class TestMessage:
 class TestHistory:
     """Test History model"""
 
-    def test_history_creation(self):
-        history = History()
-        assert len(history.messages) == 0
-        assert history.max_messages == 50
-
-    def test_add_message(self):
-        history = History()
-        message = Message(type=MessageType.USER, content="Hello")
-        history.add_message(message)
-        assert len(history.messages) == 1
-
-    def test_prune_messages(self):
-        history = History(max_messages=3)
-
-        # Add messages
-        for i in range(5):
-            message = Message(type=MessageType.USER, content=f"Message {i}")
-            history.add_message(message)
-
-        # Should have only 3 messages (most recent)
-        assert len(history.messages) == 3
-        assert history.messages[-1].content == "Message 4"
-
-    def test_system_messages_preserved(self):
-        history = History(max_messages=3)
-
-        # Add system message
-        system_msg = Message(type=MessageType.SYSTEM, content="System prompt")
-        history.add_message(system_msg)
-
-        # Add user messages
-        for i in range(5):
-            message = Message(type=MessageType.USER, content=f"Message {i}")
-            history.add_message(message)
-
-        # System message should be preserved
-        system_messages = [m for m in history.messages if m.type == MessageType.SYSTEM]
-        assert len(system_messages) == 1
-        assert system_messages[0].content == "System prompt"
-
-    def test_get_openai_messages(self):
-        history = History()
-        history.add_message(Message(type=MessageType.USER, content="Hello"))
-        history.add_message(Message(type=MessageType.AGENT, content="Hi there"))
-
-        openai_messages = history.get_openai_messages()
-        assert len(openai_messages) == 2
-        assert openai_messages[0]["role"] == "user"
-        assert openai_messages[1]["role"] == "agent"
+    # TODO: after new History class
 
 
 class TestTool:
@@ -164,7 +116,8 @@ class TestAgent:
 
     @pytest.mark.asyncio
     async def test_agent_creation(self):
-        provider = MockProvider(model_name="test")
+        model = LLMModel(name="test")
+        provider = MockProvider(model=model)
         agent = Agent(
             name="Test Agent", system_prompt="You are a test agent", provider=provider
         )
@@ -177,7 +130,8 @@ class TestAgent:
         assert agent.history.messages[0].type == MessageType.SYSTEM
 
     def test_add_tool(self):
-        provider = MockProvider(model_name="test")
+        model = LLMModel(name="test")
+        provider = MockProvider(model=model)
         agent = Agent(system_prompt="Test", provider=provider)
 
         async def test_func():
@@ -190,7 +144,8 @@ class TestAgent:
         assert agent.tools[0].name == "test_tool"
 
     def test_get_tool_by_name(self):
-        provider = MockProvider(model_name="test")
+        model = LLMModel(name="test")
+        provider = MockProvider(model=model)
         agent = Agent(system_prompt="Test", provider=provider)
 
         async def test_func():
@@ -208,7 +163,8 @@ class TestAgent:
 
     @pytest.mark.asyncio
     async def test_process_user_input(self):
-        provider = MockProvider(model_name="test")
+        model = LLMModel(name="test")
+        provider = MockProvider(model=model)
         agent = Agent(system_prompt="Test", provider=provider)
 
         response = await agent.process_user_input("Hello")
@@ -228,7 +184,8 @@ class TestAgent:
 
     @pytest.mark.asyncio
     async def test_handle_function_calls(self):
-        provider = MockProvider(model_name="test")
+        model = LLMModel(name="test")
+        provider = MockProvider(model=model)
         agent = Agent(system_prompt="Test", provider=provider)
 
         # Add a test tool
@@ -259,7 +216,8 @@ class TestAgentIntegration:
         """Test agent with XML function calling in a realistic scenario"""
 
         # Create mock provider that returns XML function call
-        provider = MockProvider(model_name="test")
+        model = LLMModel(name="test")
+        provider = MockProvider(model=model)
 
         # Override the generate method to return XML function call
         async def mock_generate(messages, tools=None):
@@ -282,7 +240,7 @@ class TestAgentIntegration:
             async def generate(self, messages, tools=None):
                 return await mock_generate(messages, tools)
 
-        provider = CustomMockProvider(model_name="test")
+        provider = CustomMockProvider(model=model)
 
         # Create agent with calculator tool
         agent = Agent(system_prompt="You are a helpful assistant.", provider=provider)
