@@ -10,6 +10,5 @@ History type:fix
     tests
 Tool calling type:feat
     error xml not JSON
-    list parameters
 MCP tool calling type:feat
 Use LiteLLM to normalize provider type:feat

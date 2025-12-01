@@ -52,16 +52,30 @@ class OpenAIProvider(Provider):
         openai_tools = []
         if tools:
             for tool in tools:
+                # Build parameters schema
+                properties = {}
+                required = []
+
+                for param in tool.parameters:
+                    properties[param.name] = {
+                        "type": param.type,
+                        "description": param.description or "",
+                    }
+                    if param.default is not None:
+                        properties[param.name]["default"] = param.default
+                    if param.required:
+                        required.append(param.name)
+
                 openai_tools.append(
                     {
                         "type": "function",
                         "function": {
                             "name": tool.name,
                             "description": tool.description or tool.prompt,
-                            "parameters": {  # TODO: should list them
+                            "parameters": {
                                 "type": "object",
-                                "properties": {},
-                                "required": [],
+                                "properties": properties,
+                                "required": required,
                             },
                         },
                     }

@@ -10,13 +10,28 @@ class BaseTool(Tool):
 
     def to_xml_schema(self) -> str:
         """Generate XML schema for this tool"""
-        # TODO: add parameters
+        parameters_xml = ""
+        if self.parameters:
+            parameters_xml = "<parameters>"
+            for param in self.parameters:
+                required_attr = "required='true'" if param.required else ""
+                default_attr = (
+                    f"default='{param.default}'" if param.default is not None else ""
+                )
+                parameters_xml += f"""
+                <parameter name="{param.name}" type="{param.type}" {required_attr} {default_attr}>
+                    <description>{param.description or ""}</description>
+                </parameter>
+                """
+            parameters_xml += "</parameters>"
+
         return f"""
         <tool name="{self.name}">
             <description>{self.description or self.prompt}</description>
             <prompt>{self.prompt}</prompt>
+            {parameters_xml}
         </tool>
-        """
+        """.strip()
 
     async def execute(self, **kwargs) -> Any:
         """Execute the tool function with given parameters"""
@@ -63,7 +78,23 @@ class XMLFunctionParser:
                 param_elem = call_elem.find("parameters")
                 if param_elem is not None:
                     for param in param_elem:
-                        parameters[param.tag] = param.text or ""
+                        param_value = param.text or ""
+                        # Try to parse as JSON for complex types
+                        try:
+                            if param_value.startswith(("[", "{")):
+                                param_value = json.loads(param_value)
+                            elif param_value.lower() in ("true", "false"):
+                                param_value = param_value.lower() == "true"
+                            elif param_value.isdigit():
+                                param_value = int(param_value)
+                            elif (
+                                "." in param_value
+                                and param_value.replace(".", "").isdigit()
+                            ):
+                                param_value = float(param_value)
+                        except (ValueError, json.JSONDecodeError):
+                            pass  # Keep as string
+                        parameters[param.tag] = param_value
 
                 function_calls.append({"tool": tool_name, "parameters": parameters})
 

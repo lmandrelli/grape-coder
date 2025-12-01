@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,12 +24,20 @@ class Message(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
+class ToolParameter(BaseModel):
+    name: str
+    type: Literal["string", "integer", "number", "boolean", "array", "object"]
+    description: Optional[str] = None
+    required: bool = True
+    default: Optional[Any] = None
+
+
 class Tool(BaseModel):
     name: str
     prompt: str
     function: Callable
     description: Optional[str] = None
-    # TODO: parameters (type, description)
+    parameters: List[ToolParameter] = Field(default_factory=list)
 
     async def execute(self, **kwargs) -> Any:
         return NotImplementedError("Tool must implement execute method")

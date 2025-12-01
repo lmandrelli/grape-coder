@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from .models import Agent, MessageType, LLMModel
+from .models import Agent, LLMModel, MessageType, ToolParameter
 from .providers import OpenAIProvider
 from .tools import BaseTool
 
@@ -28,7 +28,7 @@ class AgentLoop:
             Panel(
                 f"[bold green]Agent {self.agent.name or 'System'}[/bold green]\n"
                 f"{self.agent.description or 'Ready to help!'}\n\n"
-                f"Type 'help' for commands, 'quit' to exit.",
+                f"Type '/help' for commands, '/quit' to exit.",
                 title="🤖 Grape Coder Agent",
                 border_style="green",
             )
@@ -66,21 +66,21 @@ class AgentLoop:
         """Handle special commands"""
         command = user_input.lower().strip()
 
-        if command in ["quit", "exit", "q"]:
+        if command in ["/quit", "/exit", "/q"]:
             self.running = False
             self.console.print("[yellow]Goodbye![/yellow]")
             return True
 
-        elif command == "help":
+        elif command == "/help":
             self.show_help()
             return True
 
-        elif command == "clear":
+        elif command == "/clear":
             self.agent.clear_history()
             self.console.print("[yellow]History cleared.[/yellow]")
             return True
 
-        elif command == "tools":
+        elif command == "/tools":
             tools_info = self.agent.get_tools_info()
             self.console.print(
                 Panel(
@@ -91,7 +91,7 @@ class AgentLoop:
             )
             return True
 
-        elif command == "history":
+        elif command == "/history":
             self.show_history()
             return True
 
@@ -100,7 +100,7 @@ class AgentLoop:
     def show_help(self) -> None:
         """Show help information"""
         help_text = """
-[bold]Available Commands:[/bold]
+[bold]Available Slash Commands:[/bold]
 • [cyan]help[/cyan] - Show this help message
 • [cyan]clear[/cyan] - Clear conversation history
 • [cyan]tools[/cyan] - Show available tools
@@ -150,7 +150,7 @@ def create_default_agent() -> Agent:
 
     if not model_name:
         raise ValueError("OPENAI_MODEL_NAME environment variable is required. ")
-    
+
     # Create LLMModel instance
     llm_model = LLMModel(name=model_name)
 
@@ -211,7 +211,16 @@ def create_calculator_tool() -> BaseTool:
     return BaseTool(
         name="calculator",
         prompt="Calculate mathematical expressions",
+        description="Evaluates mathematical expressions safely",
         function=calculator,
+        parameters=[
+            ToolParameter(
+                name="expression",
+                type="string",
+                description="Mathematical expression to evaluate (e.g., '2 + 3 * 4')",
+                required=True,
+            )
+        ],
     )
 
 
@@ -230,7 +239,17 @@ def create_time_tool() -> BaseTool:
     return BaseTool(
         name="get_time",
         prompt="Get current time",
+        description="Returns the current date and time in a specified format",
         function=get_time,
+        parameters=[
+            ToolParameter(
+                name="format",
+                type="string",
+                description="DateTime format string (default: '%Y-%m-%d %H:%M:%S')",
+                required=False,
+                default="%Y-%m-%d %H:%M:%S",
+            )
+        ],
     )
 
 
@@ -244,7 +263,16 @@ def create_echo_tool() -> BaseTool:
     return BaseTool(
         name="echo",
         prompt="Echo back the provided message",
+        description="Returns the exact message that was provided",
         function=echo,
+        parameters=[
+            ToolParameter(
+                name="message",
+                type="string",
+                description="The message to echo back",
+                required=True,
+            )
+        ],
     )
 
 
