@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Literal
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,10 +40,43 @@ class Tool(BaseModel):
     parameters: List[ToolParameter] = Field(default_factory=list)
 
     async def execute(self, **kwargs) -> Any:
-        return NotImplementedError("Tool must implement execute method")
+        """Execute the tool function with given parameters"""
+        try:
+            if callable(self.function):
+                result = self.function(**kwargs)
+                if hasattr(result, "__await__"):
+                    return await result
+                else:
+                    return result
+            else:
+                raise ValueError(f"Tool {self.name} function is not callable")
+        except Exception as e:
+            return {"error": str(e), "tool": self.name}
 
-    def to_xml_schema(self) -> str | Exception:
-        return NotImplementedError("Tool must implement to_xml_schema method")
+    def to_xml_schema(self) -> str:
+        """Generate XML schema for this tool"""
+        parameters_xml = ""
+        if self.parameters:
+            parameters_xml = "<parameters>"
+            for param in self.parameters:
+                required_attr = "required='true'" if param.required else ""
+                default_attr = (
+                    f"default='{param.default}'" if param.default is not None else ""
+                )
+                parameters_xml += f"""
+                <parameter name="{param.name}" type="{param.type}" {required_attr} {default_attr}>
+                    <description>{param.description or ""}</description>
+                </parameter>
+                """
+            parameters_xml += "</parameters>"
+
+        return f"""
+        <tool name="{self.name}">
+            <description>{self.description or self.prompt}</description>
+            <prompt>{self.prompt}</prompt>
+            {parameters_xml}
+        </tool>
+        """.strip()
 
 
 class LLMModel(BaseModel):
@@ -141,6 +174,7 @@ class Agent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     system_prompt: str
+    system_variables: Dict[str, Any] = Field(default_factory=dict)
     provider: Provider
     tools: List[Tool] = Field(default_factory=list)
     sub_agents: Optional[List["Agent"]] = Field(default_factory=list)
@@ -240,6 +274,7 @@ class Agent(BaseModel):
                     result=error_result,
                 )
                 self.history.add_message(error_message)
+                print(f"Error executing tool '{tool_name}': {str(e)}")
 
     def get_tools_info(self) -> str:
         """Get formatted information about available tools"""
