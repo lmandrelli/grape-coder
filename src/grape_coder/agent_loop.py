@@ -2,9 +2,10 @@ import asyncio
 import os
 
 from dotenv import load_dotenv
+from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import HTML
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
 
 from .models import Agent, LLMModel, MessageType, ToolParameter
 from .providers import OpenAIProvider
@@ -20,6 +21,7 @@ class AgentLoop:
         self.agent = agent
         self.console = Console()
         self.running = False
+        self.session = PromptSession()
 
     async def start(self) -> None:
         """Start the agent interaction loop"""
@@ -28,7 +30,7 @@ class AgentLoop:
             Panel(
                 f"[bold green]Agent {self.agent.name or 'System'}[/bold green]\n"
                 f"{self.agent.description or 'Ready to help!'}\n\n"
-                f"Type '/help' for commands, '/quit' to exit.",
+                f"Type '/help' for commands, '/quit' or Ctrl+C to exit.",
                 title="🤖 Grape Coder Agent",
                 border_style="green",
             )
@@ -36,9 +38,9 @@ class AgentLoop:
 
         while self.running:
             try:
-                # Get user input
-                user_input = Prompt.ask(
-                    "[bold blue]You[/bold blue]", console=self.console
+                # Get user input using prompt_toolkit with styled prompt
+                user_input = await self.session.prompt_async(
+                    HTML("<b><ansiblue>You</ansiblue></b>: "),
                 )
 
                 if not user_input.strip():
@@ -56,9 +58,13 @@ class AgentLoop:
                 self.console.print("[bold green]Agent[/bold green]: " + response)
 
             except KeyboardInterrupt:
-                self.console.print(
-                    "\n[yellow]Interrupted. Type 'quit' to exit.[/yellow]"
-                )
+                # Clean exit on Ctrl+C
+                self.running = False
+                self.console.print("[yellow]Goodbye![/yellow]")
+            except EOFError:
+                # Clean exit on Ctrl+D
+                self.running = False
+                self.console.print("[yellow]Goodbye![/yellow]")
             except Exception as e:
                 self.console.print(f"[red]Error: {str(e)}[/red]")
 

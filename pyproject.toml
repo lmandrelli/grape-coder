@@ -16,6 +16,7 @@ dependencies = [
     "xmltodict>=0.13.0",
     "pytest-asyncio>=0.21.0",
     "python-dotenv>=1.2.1",
+    "prompt-toolkit>=3.0.0",
 ]
 
 [project.scripts]
