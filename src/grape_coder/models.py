@@ -74,26 +74,68 @@ class History(BaseModel):
 
     def prune(self) -> None:
         """Prune messages based on count and token limits"""
-        # TODO:
-        #   remove unecessary messages
-        #   cut
-        #   summarize cut content
 
-        # Always keep system messages
+        # If no messages or non-positive budget, keep only system
+        if not self.messages or self.max_tokens <= 0:
+            self.messages = [m for m in self.messages if m.type == MessageType.SYSTEM]
+            return
+
+        # Keep system messages in their original order
         system_messages = [m for m in self.messages if m.type == MessageType.SYSTEM]
+        non_system_messages = [m for m in self.messages if m.type != MessageType.SYSTEM]
 
-        # Token-based pruning (rough estimation)
         total_tokens = self.estimate_tokens()
-        if total_tokens > self.max_tokens:
-            # Remove oldest non-system messages until under token limit
-            non_system_messages = [
-                m for m in self.messages if m.type != MessageType.SYSTEM
-            ]
-            while total_tokens > self.max_tokens * 0.8 and len(non_system_messages) > 1:
-                removed = non_system_messages.pop(0)
-                total_tokens -= self.estimate_message_tokens(removed)
+        if total_tokens <= self.max_tokens:
+            return
 
-            self.messages = system_messages + non_system_messages
+        # Start counting tokens with system messages
+        tokens = sum(self.estimate_message_tokens(m) for m in system_messages)
+
+        # Keep the most recent non-system messages while staying within budget
+        kept_non_system: List[Message] = []
+        removed: List[Message] = []
+
+        # iterate from newest to oldest, so we keep recent messages first
+        for m in reversed(non_system_messages):
+            m_tokens = self.estimate_message_tokens(m)
+            if tokens + m_tokens <= self.max_tokens:
+                # insert at front to preserve chronological order afterward
+                kept_non_system.insert(0, m)
+                tokens += m_tokens
+            else:
+                removed.append(m)
+
+        # If we couldn't keep any non-system message, ensure at least the last one is kept
+        if not kept_non_system and non_system_messages:
+            last = non_system_messages[-1]
+            kept_non_system = [last]
+            # Recompute removed accordingly
+            removed = non_system_messages[:-1]
+
+        # Build new messages list: system messages (original order) then kept non-system
+        new_messages: List[Message] = []
+        # preserve original ordering for system messages as they occurred
+        new_messages.extend(system_messages)
+
+        # If we removed messages, add a short system-level summary marker
+        if removed:
+            # Create a lightweight summary placeholder. Detailed summarization
+            # should be done by the provider (LLM) when available.
+            sample_texts = " \n".join([m.content for m in removed[:3]])
+            summary_content = (
+                f"Pruned {len(removed)} older message(s) to fit the token budget. "
+                f"Sample of removed content:\n{sample_texts}"
+            )
+            summary_message = Message(
+                type=MessageType.SYSTEM,
+                content=summary_content,
+                metadata={"pruned_count": len(removed)},
+            )
+            new_messages.append(summary_message)
+
+        new_messages.extend(kept_non_system)
+
+        self.messages = new_messages
 
     def estimate_tokens(self) -> int:
         """Rough token estimation (1 token ≈ 4 characters)"""
