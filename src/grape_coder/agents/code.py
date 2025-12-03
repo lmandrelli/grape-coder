@@ -134,42 +134,34 @@ def create_list_files_tool(work_path: str) -> Tool:
 def create_read_file_tool(work_path: str) -> Tool:
     """Create a read file tool"""
 
-    async def read_file(paths: str) -> str:
-        """Read contents of one or more files"""
+    async def read_file(path: str) -> str:
+        """Read contents of a file"""
         try:
-            path_list = [p.strip() for p in paths.split(",")]
-            results = []
+            path_obj = Path(path).resolve()
+            if not path_obj.exists():
+                return "Error: File '{path}' does not exist"
 
-            for path in path_list:
-                path_obj = Path(path).resolve()
-                if not path_obj.exists():
-                    results.append(f"Error: File '{path}' does not exist")
-                    continue
+            if not path_obj.is_file():
+                return "Error: '{path}' is not a file"
 
-                if not path_obj.is_file():
-                    results.append(f"Error: '{path}' is not a file")
-                    continue
-
-                try:
-                    content = path_obj.read_text(encoding="utf-8")
-                    results.append(f"=== {path} ===\n{content}")
-                except UnicodeDecodeError:
-                    results.append(f"Error: Could not read '{path}' as text")
-
-            return "\n\n".join(results)
+            try:
+                content = path_obj.read_text(encoding="utf-8")
+                return content
+            except UnicodeDecodeError:
+                return "Error: Could not read '{path}' as text"
         except Exception as e:
             return f"Error: {str(e)}"
 
     return WorkPathTool(
         name="read_file",
         prompt="Read file contents",
-        description="Read contents of one or more files (comma-separated paths)",
+        description="Read contents of a specified file",
         function=read_file,
         parameters=[
             ToolParameter(
-                name="paths",
+                name="path",
                 type="string",
-                description="Comma-separated list of file paths to read",
+                description="Path to the file to read",
                 required=True,
             ),
         ],
