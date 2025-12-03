@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List
 
@@ -51,6 +52,27 @@ class XMLFunctionParser:
             end = xml_content.find("</function_calls>") + len("</function_calls>")
             function_calls_xml = xml_content[start:end]
 
+            # This prevents XML parsing issues with < and > characters in code
+            def wrap_in_cdata(match):
+                tag = match.group(1)
+                content = match.group(2)
+                return f"<{tag}><![CDATA[{content}]]></{tag}>"
+
+            # Apply CDATA wrapping to individual parameter tags within <parameters>
+            function_calls_xml = re.sub(
+                r"<parameters>(.*?)</parameters>",
+                lambda m: "<parameters>"
+                + re.sub(
+                    r"<([^/][^>]*)>(.*?)</\1>",
+                    wrap_in_cdata,
+                    m.group(1),
+                    flags=re.DOTALL,
+                )
+                + "</parameters>",
+                function_calls_xml,
+                flags=re.DOTALL,
+            )
+
             root = ET.fromstring(function_calls_xml)
 
             for call_elem in root.findall("invoke"):
@@ -63,28 +85,25 @@ class XMLFunctionParser:
                 param_elem = call_elem.find("parameters")
                 if param_elem is not None:
                     for param in param_elem:
-                        param_value = param.text or ""
-                        # Try to parse as JSON for complex types
-                        try:
-                            if param_value.startswith(("[", "{")):
-                                param_value = json.loads(param_value)
-                            elif param_value.lower() in ("true", "false"):
-                                param_value = param_value.lower() == "true"
-                            elif param_value.isdigit():
-                                param_value = int(param_value)
-                            elif (
-                                "." in param_value
-                                and param_value.replace(".", "").isdigit()
-                            ):
-                                param_value = float(param_value)
-                        except (ValueError, json.JSONDecodeError):
-                            pass  # Keep as string
+                        # Use the text content directly, which properly handles XML escaping
+                        # If the parameter has child elements, get the full XML content
+                        if len(param) > 0:
+                            # Parameter contains XML elements - get the full inner XML
+                            param_value = "".join(
+                                ET.tostring(child, encoding="unicode", method="xml")
+                                for child in param
+                            )
+                        else:
+                            # Parameter has simple text content
+                            param_value = param.text or ""
+
                         parameters[param.tag] = param_value
 
                 function_calls.append({"tool": tool_name, "parameters": parameters})
 
         except ET.ParseError as e:
             print(f"XML parsing error: {e}")
+            print(xml_content)
 
         return function_calls
 
