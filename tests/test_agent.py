@@ -1,8 +1,8 @@
 import pytest
 
-from grape_coder.models import Agent, History, LLMModel, Message, MessageType
+from grape_coder.models import Agent, History, LLMModel, Message, MessageType, Tool
 from grape_coder.providers import MockProvider
-from grape_coder.tools import BaseTool, XMLFunctionParser
+from grape_coder.tools import XMLFunctionParser
 
 
 class TestMessage:
@@ -38,7 +38,7 @@ class TestTool:
         async def test_function(x: int, y: int) -> int:
             return x + y
 
-        tool = BaseTool(name="add", prompt="Add two numbers", function=test_function)
+        tool = Tool(name="add", prompt="Add two numbers", function=test_function)
 
         result = await tool.execute(x=2, y=3)
         assert result == 5
@@ -48,7 +48,7 @@ class TestTool:
         async def failing_function():
             raise ValueError("Test error")
 
-        tool = BaseTool(
+        tool = Tool(
             name="failing_tool", prompt="This tool fails", function=failing_function
         )
 
@@ -137,7 +137,7 @@ class TestAgent:
         async def test_func():
             return "test"
 
-        tool = BaseTool(name="test_tool", prompt="Test", function=test_func)
+        tool = Tool(name="test_tool", prompt="Test", function=test_func)
         agent.add_tool(tool)
 
         assert len(agent.tools) == 1
@@ -151,7 +151,7 @@ class TestAgent:
         async def test_func():
             return "test"
 
-        tool = BaseTool(name="test_tool", prompt="Test", function=test_func)
+        tool = Tool(name="test_tool", prompt="Test", function=test_func)
         agent.add_tool(tool)
 
         found_tool = agent.get_tool_by_name("test_tool")
@@ -192,7 +192,7 @@ class TestAgent:
         async def echo_tool(message: str) -> str:
             return f"Echo: {message}"
 
-        tool = BaseTool(name="echo", prompt="Echo message", function=echo_tool)
+        tool = Tool(name="echo", prompt="Echo message", function=echo_tool)
         agent.add_tool(tool)
 
         # Simulate function calls
@@ -252,7 +252,7 @@ class TestAgentIntegration:
             except:
                 return "Error"
 
-        calc_tool = BaseTool(name="calculator", prompt="Calculate", function=calculator)
+        calc_tool = Tool(name="calculator", prompt="Calculate", function=calculator)
         agent.add_tool(calc_tool)
 
         # Process user input

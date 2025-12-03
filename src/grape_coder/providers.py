@@ -1,32 +1,37 @@
 import os
 from typing import List, Optional
 
-from openai import AsyncOpenAI
+import litellm
 from pydantic import ConfigDict
 
 from .models import Message, MessageType, Provider, Tool
 
 
-class OpenAIProvider(Provider):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    client: Optional[AsyncOpenAI] = None
+class LiteLLMProvider(Provider):
+    """LiteLLM provider supporting multiple LLM providers with unified interface"""
 
     def __init__(self, **data):
         super().__init__(**data)
-        api_key = self.api_key or os.getenv("OPENAI_API_KEY")
-        if not api_key:
+        # Set API key based on provider type
+        if not self.api_key:
+            # Try different environment variables based on model prefix
+            if self.model.name.startswith("openai/"):
+                self.api_key = os.getenv("OPENAI_API_KEY")
+            elif self.model.name.startswith("anthropic/"):
+                self.api_key = os.getenv("ANTHROPIC_API_KEY")
+            elif self.model.name.startswith("openrouter/"):
+                self.api_key = os.getenv("OPENROUTER_API_KEY")
+            else:
+                self.api_key = os.getenv("OPENAI_API_KEY")  # default
+            
+        if not self.api_key:
             raise ValueError(
-                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass api_key parameter."
+                "API key is required. Set appropriate environment variable (OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, etc.) or pass api_key parameter."
             )
-
-        self.client = AsyncOpenAI(api_key=api_key, base_url=self.base_url)
 
     async def generate(
         self, messages: List[Message], tools: Optional[List[Tool]] = None
     ) -> str:
-        if not self.client:
-            raise RuntimeError("OpenAI client not initialized")
 
         # Convert messages to OpenAI format
         openai_messages = []
@@ -82,17 +87,20 @@ class OpenAIProvider(Provider):
                 )
 
         try:
-            response = await self.client.chat.completions.create(
+            # Use LiteLLM completion with async support
+            response = await litellm.acompletion(
                 model=self.model.name,
                 messages=openai_messages,
                 tools=openai_tools,
                 tool_choice="auto",
+                api_key=self.api_key,
+                base_url=self.base_url,
             )
 
             return response.choices[0].message.content or ""
 
         except Exception as e:
-            raise RuntimeError(f"OpenAI API error: {str(e)}")
+            raise RuntimeError(f"LiteLLM API error: {str(e)}")
 
 
 class MockProvider(Provider):

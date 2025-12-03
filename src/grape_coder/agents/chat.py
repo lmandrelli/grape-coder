@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from ..models import Agent, LLMModel, ToolParameter
-from ..providers import OpenAIProvider
+from ..providers import LiteLLMProvider
 from ..tools import Tool
 
 load_dotenv()
@@ -13,26 +13,22 @@ def create_chat_agent() -> Agent:
     """Create a chat agent with basic tools"""
 
     # Get configuration from environment variables
-    api_key = os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL")
-    model_name = os.getenv("OPENAI_MODEL_NAME")
+    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+    model_name = os.getenv("OPENAI_MODEL_NAME") or os.getenv("MODEL_NAME")
 
     if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is required. ")
+        raise ValueError("API key environment variable is required (OPENAI_API_KEY or OPENROUTER_API_KEY). ")
 
     if not model_name:
-        raise ValueError("OPENAI_MODEL_NAME environment variable is required. ")
+        raise ValueError("Model name environment variable is required (OPENAI_MODEL_NAME or MODEL_NAME). ")
 
     # Create LLMModel instance
     llm_model = LLMModel(name=model_name)
 
-    # Create OpenAIProvider with environment configuration
+    # Create LiteLLMProvider with environment configuration
     provider_kwargs = {"model": llm_model, "api_key": api_key}
 
-    if base_url:
-        provider_kwargs["base_url"] = base_url
-
-    provider = OpenAIProvider(**provider_kwargs)
+    provider = LiteLLMProvider(**provider_kwargs)
 
     # Create agent
     system_prompt = """You are a helpful AI assistant with access to various tools.
