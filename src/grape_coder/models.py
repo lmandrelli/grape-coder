@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Literal
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,10 +40,43 @@ class Tool(BaseModel):
     parameters: List[ToolParameter] = Field(default_factory=list)
 
     async def execute(self, **kwargs) -> Any:
-        return NotImplementedError("Tool must implement execute method")
+        """Execute the tool function with given parameters"""
+        try:
+            if callable(self.function):
+                result = self.function(**kwargs)
+                if hasattr(result, "__await__"):
+                    return await result
+                else:
+                    return result
+            else:
+                raise ValueError(f"Tool {self.name} function is not callable")
+        except Exception as e:
+            return {"error": str(e), "tool": self.name}
 
-    def to_xml_schema(self) -> str | Exception:
-        return NotImplementedError("Tool must implement to_xml_schema method")
+    def to_xml_schema(self) -> str:
+        """Generate XML schema for this tool"""
+        parameters_xml = ""
+        if self.parameters:
+            parameters_xml = "<parameters>"
+            for param in self.parameters:
+                required_attr = "required='true'" if param.required else ""
+                default_attr = (
+                    f"default='{param.default}'" if param.default is not None else ""
+                )
+                parameters_xml += f"""
+                <parameter name="{param.name}" type="{param.type}" {required_attr} {default_attr}>
+                    <description>{param.description or ""}</description>
+                </parameter>
+                """
+            parameters_xml += "</parameters>"
+
+        return f"""
+        <tool name="{self.name}">
+            <description>{self.description or self.prompt}</description>
+            <prompt>{self.prompt}</prompt>
+            {parameters_xml}
+        </tool>
+        """.strip()
 
 
 class LLMModel(BaseModel):
@@ -74,26 +107,68 @@ class History(BaseModel):
 
     def prune(self) -> None:
         """Prune messages based on count and token limits"""
-        # TODO:
-        #   remove unecessary messages
-        #   cut
-        #   summarize cut content
 
-        # Always keep system messages
+        # If no messages or non-positive budget, keep only system
+        if not self.messages or self.max_tokens <= 0:
+            self.messages = [m for m in self.messages if m.type == MessageType.SYSTEM]
+            return
+
+        # Keep system messages in their original order
         system_messages = [m for m in self.messages if m.type == MessageType.SYSTEM]
+        non_system_messages = [m for m in self.messages if m.type != MessageType.SYSTEM]
 
-        # Token-based pruning (rough estimation)
         total_tokens = self.estimate_tokens()
-        if total_tokens > self.max_tokens:
-            # Remove oldest non-system messages until under token limit
-            non_system_messages = [
-                m for m in self.messages if m.type != MessageType.SYSTEM
-            ]
-            while total_tokens > self.max_tokens * 0.8 and len(non_system_messages) > 1:
-                removed = non_system_messages.pop(0)
-                total_tokens -= self.estimate_message_tokens(removed)
+        if total_tokens <= self.max_tokens:
+            return
 
-            self.messages = system_messages + non_system_messages
+        # Start counting tokens with system messages
+        tokens = sum(self.estimate_message_tokens(m) for m in system_messages)
+
+        # Keep the most recent non-system messages while staying within budget
+        kept_non_system: List[Message] = []
+        removed: List[Message] = []
+
+        # iterate from newest to oldest, so we keep recent messages first
+        for m in reversed(non_system_messages):
+            m_tokens = self.estimate_message_tokens(m)
+            if tokens + m_tokens <= self.max_tokens:
+                # insert at front to preserve chronological order afterward
+                kept_non_system.insert(0, m)
+                tokens += m_tokens
+            else:
+                removed.append(m)
+
+        # If we couldn't keep any non-system message, ensure at least the last one is kept
+        if not kept_non_system and non_system_messages:
+            last = non_system_messages[-1]
+            kept_non_system = [last]
+            # Recompute removed accordingly
+            removed = non_system_messages[:-1]
+
+        # Build new messages list: system messages (original order) then kept non-system
+        new_messages: List[Message] = []
+        # preserve original ordering for system messages as they occurred
+        new_messages.extend(system_messages)
+
+        # If we removed messages, add a short system-level summary marker
+        if removed:
+            # Create a lightweight summary placeholder. Detailed summarization
+            # should be done by the provider (LLM) when available.
+            sample_texts = " \n".join([m.content for m in removed[:3]])
+            summary_content = (
+                f"Pruned {len(removed)} older message(s) to fit the token budget. "
+                f"Sample of removed content:\n{sample_texts}"
+            )
+            summary_message = Message(
+                type=MessageType.SYSTEM,
+                content=summary_content,
+                metadata={"pruned_count": len(removed)},
+            )
+            new_messages.append(summary_message)
+
+        new_messages.extend(kept_non_system)
+
+        self.messages = new_messages
 
     def estimate_tokens(self) -> int:
         """Rough token estimation (1 token ≈ 4 characters)"""
@@ -141,6 +216,7 @@ class Agent(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     system_prompt: str
+    system_variables: Dict[str, Any] = Field(default_factory=dict)
     provider: Provider
     tools: List[Tool] = Field(default_factory=list)
     sub_agents: Optional[List["Agent"]] = Field(default_factory=list)
@@ -240,6 +316,7 @@ class Agent(BaseModel):
                     result=error_result,
                 )
                 self.history.add_message(error_message)
+                print(f"Error executing tool '{tool_name}': {str(e)}")
 
     def get_tools_info(self) -> str:
         """Get formatted information about available tools"""

@@ -1,12 +1,7 @@
-Double goodbye when ctrl+c type:fix
 History type:fix
     attribute provider not max_token
     token -> should be handle by provider type:fix,refactor
         no estimate token
-    prune
-        remove unecessary messages
-        cut
-        summarize cut content
     tests
 Tool calling type:feat
     error xml not JSON

@@ -1,51 +1,37 @@
 import json
+import os
+import re
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List
 
 from .models import Tool
 
 
-class BaseTool(Tool):
+class WorkPathTool(Tool):
     """Base tool implementation with XML function calling support"""
 
-    def to_xml_schema(self) -> str:
-        """Generate XML schema for this tool"""
-        parameters_xml = ""
-        if self.parameters:
-            parameters_xml = "<parameters>"
-            for param in self.parameters:
-                required_attr = "required='true'" if param.required else ""
-                default_attr = (
-                    f"default='{param.default}'" if param.default is not None else ""
-                )
-                parameters_xml += f"""
-                <parameter name="{param.name}" type="{param.type}" {required_attr} {default_attr}>
-                    <description>{param.description or ""}</description>
-                </parameter>
-                """
-            parameters_xml += "</parameters>"
+    work_path: str = "."
 
-        return f"""
-        <tool name="{self.name}">
-            <description>{self.description or self.prompt}</description>
-            <prompt>{self.prompt}</prompt>
-            {parameters_xml}
-        </tool>
-        """.strip()
+    def __init__(self, work_path: str, **kwargs: Any):
+        super().__init__(**kwargs)
+        self.work_path = work_path
 
-    async def execute(self, **kwargs) -> Any:
-        """Execute the tool function with given parameters"""
-        try:
-            if callable(self.function):
-                result = self.function(**kwargs)
-                if hasattr(result, "__await__"):
-                    return await result
-                else:
-                    return result
-            else:
-                raise ValueError(f"Tool {self.name} function is not callable")
-        except Exception as e:
-            return {"error": str(e), "tool": self.name}
+    async def execute(self, **kwargs: Any) -> Any:
+        """Execute the tool with given parameters"""
+
+        path = kwargs.get("path")
+        if path is None:
+            raise ValueError("Missing required parameter: 'path'")
+        if not isinstance(path, str):
+            raise TypeError("Parameter 'path' must be a string")
+
+        full_path = os.path.join(self.work_path, path)
+
+        # Skip existence check for edit_file tool since it can create new files
+        if self.name != "edit_file" and not os.path.exists(full_path):
+            raise FileNotFoundError(f"Path does not exist: {full_path}")
+
+        return await super().execute(**{**kwargs, "path": full_path})
 
 
 class XMLFunctionParser:
@@ -66,6 +52,27 @@ class XMLFunctionParser:
             end = xml_content.find("</function_calls>") + len("</function_calls>")
             function_calls_xml = xml_content[start:end]
 
+            # This prevents XML parsing issues with < and > characters in code
+            def wrap_in_cdata(match):
+                tag = match.group(1)
+                content = match.group(2)
+                return f"<{tag}><![CDATA[{content}]]></{tag}>"
+
+            # Apply CDATA wrapping to individual parameter tags within <parameters>
+            function_calls_xml = re.sub(
+                r"<parameters>(.*?)</parameters>",
+                lambda m: "<parameters>"
+                + re.sub(
+                    r"<([^/][^>]*)>(.*?)</\1>",
+                    wrap_in_cdata,
+                    m.group(1),
+                    flags=re.DOTALL,
+                )
+                + "</parameters>",
+                function_calls_xml,
+                flags=re.DOTALL,
+            )
+
             root = ET.fromstring(function_calls_xml)
 
             for call_elem in root.findall("invoke"):
@@ -78,28 +85,25 @@ class XMLFunctionParser:
                 param_elem = call_elem.find("parameters")
                 if param_elem is not None:
                     for param in param_elem:
-                        param_value = param.text or ""
-                        # Try to parse as JSON for complex types
-                        try:
-                            if param_value.startswith(("[", "{")):
-                                param_value = json.loads(param_value)
-                            elif param_value.lower() in ("true", "false"):
-                                param_value = param_value.lower() == "true"
-                            elif param_value.isdigit():
-                                param_value = int(param_value)
-                            elif (
-                                "." in param_value
-                                and param_value.replace(".", "").isdigit()
-                            ):
-                                param_value = float(param_value)
-                        except (ValueError, json.JSONDecodeError):
-                            pass  # Keep as string
+                        # Use the text content directly, which properly handles XML escaping
+                        # If the parameter has child elements, get the full XML content
+                        if len(param) > 0:
+                            # Parameter contains XML elements - get the full inner XML
+                            param_value = "".join(
+                                ET.tostring(child, encoding="unicode", method="xml")
+                                for child in param
+                            )
+                        else:
+                            # Parameter has simple text content
+                            param_value = param.text or ""
+
                         parameters[param.tag] = param_value
 
                 function_calls.append({"tool": tool_name, "parameters": parameters})
 
         except ET.ParseError as e:
             print(f"XML parsing error: {e}")
+            print(xml_content)
 
         return function_calls
 
