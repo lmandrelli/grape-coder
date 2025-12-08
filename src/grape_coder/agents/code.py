@@ -34,13 +34,14 @@ def create_code_agent(work_path: str) -> Agent:
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant with access to file system tools.
-You can list files, read files, edit/create files, search for content, and fetch web content.
+You can list files, read files, edit/create files, search for content, use glob patterns, and fetch web content.
 
 Available tools:
 - list_files: List files and directories in a path
 - read_file: Read contents of one or more files
 - edit_file: Edit or create a file with new content
 - grep_files: Search for patterns in files
+- glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL
 
 Always be helpful and provide clear explanations of what you're doing."""
@@ -52,6 +53,7 @@ Always be helpful and provide clear explanations of what you're doing."""
             read_file,
             edit_file,
             grep_files,
+            glob_files,
             fetch_url,
         ],
         system_prompt=system_prompt,
@@ -207,6 +209,42 @@ def grep_files(pattern: str, path: str = ".", file_pattern: str = "*") -> str:
         return f"Matches for '{pattern}' in '{path}':\n" + "\n".join(
             results[:50]
         )  # Limit to 50 results
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@tool
+def glob_files(pattern: str, path: str = ".") -> str:
+    """Find files using glob patterns
+
+    Args:
+        pattern: Glob pattern to match files (e.g., "*.py", "**/*.js", "src/**/*.ts")
+        path: Path to search in (default: current directory)
+    """
+    try:
+        # Resolve path relative to work_path
+        if not os.path.isabs(path):
+            path = os.path.join(_work_path, path)
+
+        path_obj = Path(path).resolve()
+        if not path_obj.exists():
+            return f"Error: Path '{path}' does not exist"
+
+        # Use glob to find matching files
+        matches = list(path_obj.glob(pattern))
+
+        if not matches:
+            return f"No files found matching pattern '{pattern}' in '{path}'"
+
+        # Sort results and format output
+        results = []
+        for match in sorted(matches):
+            if match.is_file():
+                results.append(f"  {match.relative_to(path_obj)}")
+            else:
+                results.append(f"📁 {match.relative_to(path_obj)}/")
+
+        return f"Files matching '{pattern}' in '{path}':\n" + "\n".join(results)
     except Exception as e:
         return f"Error: {str(e)}"
 
