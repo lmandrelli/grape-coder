@@ -5,16 +5,9 @@ from typing import Optional
 
 import typer
 from rich.console import Console
-from strands.multiagent import Swarm
 
 from .agents.composer import build_composer
-from .agents.planner import (
-    create_architect_agent,
-    create_content_planner_agent,
-    create_designer_agent,
-    create_researcher_agent,
-    create_todo_generator_agent,
-)
+from .agents.planner import build_planner, create_todo_generator_agent
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -81,48 +74,27 @@ def code(
 
                 console.print("[bold green]Agent:[/bold green]")
 
-                # Planner - Create development plan
                 console.print("[green]📄 Planner...[/green]")
 
                 try:
-                    # Create specialized agents
-                    researcher = create_researcher_agent(str(work_path))
-                    architect = create_architect_agent(str(work_path))
-                    designer = create_designer_agent(str(work_path))
-                    content_planner = create_content_planner_agent(str(work_path))
+                    planner = build_planner(str(work_path))
 
-                    # Create swarm with website development agents
-                    swarm = Swarm(
-                        [researcher, architect, designer, content_planner],
-                        entry_point=researcher,  # Start with researcher
-                        max_handoffs=10,
-                        max_iterations=10,
-                        execution_timeout=480.0,  # 5 minutes
-                        node_timeout=90.0,  # 2 minutes per agent
-                        repetitive_handoff_detection_window=3,
-                        repetitive_handoff_min_unique_agents=2,
-                    )
-
-                    # Execute swarm for website development planning
-                    swarm_prompt = f"Create a comprehensive website development plan for: {user_input}"
-                    swarm_result = swarm(swarm_prompt)
+                    planner_prompt = f"Create a comprehensive website development plan for: {user_input}"
+                    planner_result = planner(planner_prompt)
 
                     # Extract the complete plan from the swarm
                     complete_plan = ""
-                    for node_name, node_result in swarm_result.results.items():
+                    for node_name, node_result in planner_result.results.items():
                         if hasattr(node_result, "result"):
                             complete_plan += f"\n=== {node_name.upper()} OUTPUT ===\n{node_result.result}\n"
 
-                    # Create todo generator agent
                     console.print("[green]📋 Todo[/green]")
 
                     todo_generator = create_todo_generator_agent(str(work_path))
 
-                    # Generate structured todo list from the swarm's output
                     todo_prompt = f"Create a structured todo list from this website development plan:\n{complete_plan}"
                     todo_result = todo_generator(todo_prompt)
 
-                    # Use the generated todo as input for the code agent
                     graph_input = f"Execute the following todo list for website development:\n{todo_result}"
 
                 except Exception as e:
@@ -134,7 +106,6 @@ def code(
                     # Fallback to direct code execution
                     graph_input = user_input
 
-                # Composer - Create components
                 console.print("[green]📚 Composer[/green]")
 
                 graph = build_composer(str(work_path))
