@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 from .agents.code import create_code_agent
+from .config import run_config_setup
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -34,6 +35,12 @@ def version_callback(value: bool):
 
 
 @app.command()
+def config():
+    """Interactive configuration setup for providers and agents."""
+    run_config_setup()
+
+
+@app.command()
 def code(
     path: str = typer.Argument(
         ".", help="Path to work in (default: current directory)"
@@ -56,7 +63,7 @@ def code(
     )
 
     try:
-        agent = create_code_agent(str(work_path))
+        agent = create_code_agent(str(work_path), "code")
 
         console.print(
             "[bold blue]Grape Coder is ready! Type 'exit' to quit.[/bold blue]"

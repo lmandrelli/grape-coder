@@ -1,6 +1,6 @@
 # grape-coder
 
-A Python CLI application built with Typer and managed with uv.
+Grape Coder is an AI-powered code assistant. Built with Typer and managed with uv.
 
 ## Development with uv
 
@@ -107,9 +107,14 @@ uv publish  # Requires PyPI credentials
 
 ## CLI Commands
 
-**Basic usage:**
+**Configuration setup:**
 ```bash
-grape-coder <arg>    # Greet with the provided argument
+grape-coder config    # Interactive configuration setup for providers and agents
+```
+
+**Code agent:**
+```bash
+grape-coder code [path]    # Start an interactive code session (default: current directory)
 ```
 
 **Available options:**
@@ -120,13 +125,29 @@ grape-coder --help           # Show help message
 
 **Examples:**
 ```bash
-grape-coder "Hello World"    # Output: Hello Hello World ! This is grape-coder.
+grape-coder config           # Set up providers and agents
+grape-coder code ./my-project  # Start coding in a specific directory
 grape-coder --version        # Shows ASCII art logo and version
 ```
+
+## Configuration
+
+Grape Coder uses a secure JSON configuration system supporting multiple AI providers through LiteLLM:
+
+### Supported Providers and Models examples
+- **OpenAI**: `gpt-5.1`, `gpt-5.1-codex-max`
+- **Anthropic**: `claude-sonnet-4-5`, `claude-opus-4-5`
+- **Gemini**: `gemini-3-pro-preview`, `gemini-2.5-flash`
+- **Mistral**: `devstral-medium-2507`, `mistral-large-latest`, `ministral-8b-latest`
+- **Ollama**: `ministral-3:14b`, `gpt-oss:20b`
+- **Custom**: OpenAI-compatible APIs (model names automatically prefixed with `openai/`), with chutes.ai for exemple :`base_url : https://llm.chutes.ai/v1/`; `model_name : zai-org/GLM-4.6`
+
+### Setup
+Run `grape-coder config` to interactively configure providers and agents. The configuration is stored securely in your system's config directory with proper file permissions.
 
 ## Key Configuration Details
 
 - **Python Version**: 3.13+ (specified in `.python-version` and `pyproject.toml`)
 - **Entry Point**: `grape-coder` command points to `grape_coder.main:app`
-- **Main Dependency**: `typer>=0.20.0` for CLI functionality
+- **Main Dependencies**: `typer>=0.20.0` for CLI, `strands-agents` for AI agents, `litellm` for model integration
 - **Build System**: Uses `uv_build` backend

@@ -1,36 +1,44 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from strands import Agent
-from strands.models.mistral import MistralModel
 from strands.tools import tool
 
-load_dotenv()
+from ..config import get_config_manager, ProviderFactory
 
 # Global variable to store work_path for tools
 _work_path = "."
 
 
-def create_code_agent(work_path: str) -> Agent:
+def create_code_agent(work_path: str, agent_name: str = "code") -> Agent:
     """Create a code agent with file system tools"""
 
     # Set global work_path for tools
     global _work_path
     _work_path = work_path
 
-    # Get configuration from environment variables
-    api_key = os.getenv("MISTRAL_API_KEY")
-    model_name = os.getenv("MISTRAL_MODEL_NAME", "mistral-large-latest")
+    # Load configuration
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
 
-    if not api_key:
-        raise ValueError("MISTRAL_API_KEY environment variable is required.")
+    # Validate configuration
+    if not config.agents:
+        raise ValueError(
+            "No agents configured. Run 'grape-coder config' to set up providers and agents."
+        )
 
-    # Create Mistral model
-    model = MistralModel(
-        api_key=api_key,
-        model_id=model_name,
-    )
+    if agent_name not in config.agents:
+        available_agents = list(config.agents.keys())
+        raise ValueError(
+            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
+            "Run 'grape-coder config' to manage agents."
+        )
+
+    agent_config = config.agents[agent_name]
+    provider_config = config.providers[agent_config.provider_ref]
+
+    # Create model using LiteLLM integration
+    model = ProviderFactory.create_model(provider_config, agent_config.model_name)
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant with access to file system tools.
