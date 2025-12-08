@@ -67,7 +67,7 @@ def code(
             try:
                 user_input = console.input("\n[bold cyan]You:[/bold cyan] ")
 
-                if user_input.lower() in ["exit", "quit", "q"]:
+                if user_input.lower() in ["/exit", "/quit", "/q"]:
                     console.print("[yellow]Goodbye![/yellow]")
                     break
 
