@@ -1,4 +1,3 @@
-import asyncio
 import importlib.metadata
 import os
 from pathlib import Path
@@ -7,8 +6,6 @@ from typing import Optional
 import typer
 from rich.console import Console
 
-from .agent_loop import AgentLoop
-from .agents.chat import create_chat_agent
 from .agents.code import create_code_agent
 
 app = typer.Typer(no_args_is_help=True)
@@ -23,9 +20,9 @@ def header():
    ######*#####-####   / / __/ ___/ __ `/ __ \\/ _ \\   / /   / __ \\/ __  / _ \\/ ___/
     ####  ####   #### / /_/ / /  / /_/ / /_/ /  __/  / /___/ /_/ / /_/ /  __/ /
  ####  ####  ####     \\____/_/   \\__,_/ .___/\\___/   \\____/\\____/\\__,_/\\___/_/
-############=#####                   /_/
- ####  +###  =###
-""")
+ ############=#####                   /_/
+  ####  +###  =###
+ """)
 
 
 def version_callback(value: bool):
@@ -34,22 +31,6 @@ def version_callback(value: bool):
         version = importlib.metadata.version("grape-coder")
         typer.echo(f"Running v{version}")
         raise typer.Exit()
-
-
-@app.command()
-def chat():
-    """Start an interactive chat session with the AI agent."""
-    console.print("[bold green]Starting Grape Coder Chat Agent...[/bold green]")
-
-    try:
-        agent = create_chat_agent()
-        loop = AgentLoop(agent)
-        asyncio.run(loop.start())
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Goodbye![/yellow]")
-    except Exception as e:
-        console.print(f"[red]Error starting agent: {str(e)}[/red]")
-        raise typer.Exit(1)
 
 
 @app.command()
@@ -76,10 +57,33 @@ def code(
 
     try:
         agent = create_code_agent(str(work_path))
-        loop = AgentLoop(agent)
-        asyncio.run(loop.start())
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Goodbye![/yellow]")
+
+        # Simple interactive loop
+        console.print(
+            "[bold blue]Grape Coder is ready! Type 'exit' to quit.[/bold blue]"
+        )
+
+        while True:
+            try:
+                user_input = console.input("\n[bold cyan]You:[/bold cyan] ")
+
+                if user_input.lower() in ["exit", "quit", "q"]:
+                    console.print("[yellow]Goodbye![/yellow]")
+                    break
+
+                if not user_input.strip():
+                    continue
+
+                # Get agent response
+                response = agent(user_input)
+                console.print(f"[bold green]Agent:[/bold green] {response}")
+
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Goodbye![/yellow]")
+                break
+            except Exception as e:
+                console.print(f"[red]Error: {str(e)}[/red]")
+
     except Exception as e:
         console.print(f"[red]Error starting agent: {str(e)}[/red]")
         raise typer.Exit(1)
@@ -99,7 +103,7 @@ def main_callback(
         help="Show version",
     ),
 ):
-    """Grape Coder - AI Agent with XML Function Calling"""
+    """Grape Coder - AI Agent with Strands Framework and Mistral"""
     pass
 
 

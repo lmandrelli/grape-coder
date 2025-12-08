@@ -4,19 +4,22 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "Luca Mandrelli", email = "luca.mandrelli@icloud.com" }
+    { name = "Luca Mandrelli", email = "luca.mandrelli@icloud.com" },
+    { name = "rom100main", email = "rom100main@proton.me" },
+    { name = "Antoine BRETZNER", email = "antoine.bretzner@telecomnancy.eu" }
 ]
 requires-python = ">=3.13"
 dependencies = [
     "typer>=0.20.0",
     "pytest>=9.0.0",
-    "openai>=1.0.0",
     "pydantic>=2.0.0",
     "rich>=13.0.0",
     "xmltodict>=0.13.0",
     "pytest-asyncio>=0.21.0",
     "python-dotenv>=1.2.1",
     "prompt-toolkit>=3.0.0",
+    "strands-agents",
+    "strands-agents[mistral]>=0.1.0",
 ]
 
 [project.scripts]
