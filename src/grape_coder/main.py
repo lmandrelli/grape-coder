@@ -6,8 +6,10 @@ from typing import Optional
 import typer
 from rich.console import Console
 
+from grape_coder.agents.todo import create_todo_generator_agent
+
 from .agents.composer import build_composer
-from .agents.planner import build_planner, create_todo_generator_agent
+from .agents.planner import build_planner
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
