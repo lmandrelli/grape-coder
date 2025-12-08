@@ -10,6 +10,7 @@ from grape_coder.agents.todo import create_todo_generator_agent
 
 from .agents.composer import build_composer
 from .agents.planner import build_planner
+from .config import run_config_setup
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -34,6 +35,12 @@ def version_callback(value: bool):
         version = importlib.metadata.version("grape-coder")
         typer.echo(f"Running v{version}")
         raise typer.Exit()
+
+
+@app.command()
+def config():
+    """Interactive configuration setup for providers and agents."""
+    run_config_setup()
 
 
 @app.command()

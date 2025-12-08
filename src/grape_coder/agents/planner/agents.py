@@ -1,8 +1,6 @@
 import os
 
-from dotenv import load_dotenv
 from strands import Agent
-from strands.models.mistral import MistralModel
 
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
@@ -11,28 +9,37 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-load_dotenv()
-
-
-def create_model():
-    """Create a Mistral model instance"""
-    api_key = os.getenv("MISTRAL_API_KEY")
-    model_name = os.getenv("MISTRAL_MODEL_NAME", "mistral-large-latest")
-
-    if not api_key:
-        raise ValueError("MISTRAL_API_KEY environment variable is required.")
-
-    return MistralModel(
-        api_key=api_key,
-        model_id=model_name,
-    )
+from ...config import get_config_manager
+from ...config.litellm_integration import create_litellm_model
 
 
 def create_researcher_agent(work_path: str) -> Agent:
     """Create a researcher agent for website development research"""
     set_work_path(work_path)
 
-    model = create_model()
+    # Load configuration
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
+
+    # Validate configuration
+    if not config.agents:
+        raise ValueError(
+            "No agents configured. Run 'grape-coder config' to set up providers and agents."
+        )
+
+    agent_name = "researcher"
+    if agent_name not in config.agents:
+        available_agents = list(config.agents.keys())
+        raise ValueError(
+            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
+            "Run 'grape-coder config' to manage agents."
+        )
+
+    agent_config = config.agents[agent_name]
+    provider_config = config.providers[agent_config.provider_ref]
+
+    # Create model using LiteLLM integration
+    model = create_litellm_model(provider_config, agent_config.model_name)
 
     system_prompt = """You are a Website Development Researcher specializing in researching best practices, frameworks, and technologies for website development.
 
@@ -69,7 +76,29 @@ def create_architect_agent(work_path: str) -> Agent:
     """Create an architect agent for system architecture design"""
     set_work_path(work_path)
 
-    model = create_model()
+    # Load configuration
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
+
+    # Validate configuration
+    if not config.agents:
+        raise ValueError(
+            "No agents configured. Run 'grape-coder config' to set up providers and agents."
+        )
+
+    agent_name = "architect"
+    if agent_name not in config.agents:
+        available_agents = list(config.agents.keys())
+        raise ValueError(
+            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
+            "Run 'grape-coder config' to manage agents."
+        )
+
+    agent_config = config.agents[agent_name]
+    provider_config = config.providers[agent_config.provider_ref]
+
+    # Create model using LiteLLM integration
+    model = create_litellm_model(provider_config, agent_config.model_name)
 
     system_prompt = """You are a Website Development Architect specializing in designing overall system architecture and technology stacks.
 
@@ -107,7 +136,29 @@ def create_designer_agent(work_path: str) -> Agent:
     """Create a designer agent for UI/UX design"""
     set_work_path(work_path)
 
-    model = create_model()
+    # Load configuration
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
+
+    # Validate configuration
+    if not config.agents:
+        raise ValueError(
+            "No agents configured. Run 'grape-coder config' to set up providers and agents."
+        )
+
+    agent_name = "designer"
+    if agent_name not in config.agents:
+        available_agents = list(config.agents.keys())
+        raise ValueError(
+            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
+            "Run 'grape-coder config' to manage agents."
+        )
+
+    agent_config = config.agents[agent_name]
+    provider_config = config.providers[agent_config.provider_ref]
+
+    # Create model using LiteLLM integration
+    model = create_litellm_model(provider_config, agent_config.model_name)
 
     system_prompt = """You are a Website UI/UX Designer specializing in creating user interface and user experience designs.
 
@@ -145,7 +196,29 @@ def create_content_planner_agent(work_path: str) -> Agent:
     """Create a content planner agent for content structure and organization"""
     set_work_path(work_path)
 
-    model = create_model()
+    # Load configuration
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
+
+    # Validate configuration
+    if not config.agents:
+        raise ValueError(
+            "No agents configured. Run 'grape-coder config' to set up providers and agents."
+        )
+
+    agent_name = "content_planner"
+    if agent_name not in config.agents:
+        available_agents = list(config.agents.keys())
+        raise ValueError(
+            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
+            "Run 'grape-coder config' to manage agents."
+        )
+
+    agent_config = config.agents[agent_name]
+    provider_config = config.providers[agent_config.provider_ref]
+
+    # Create model using LiteLLM integration
+    model = create_litellm_model(provider_config, agent_config.model_name)
 
     system_prompt = """You are a Website Content Planner specializing in planning content structure and organization.
 

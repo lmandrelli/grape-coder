@@ -1,0 +1,126 @@
+import json
+import os
+from pathlib import Path
+from typing import Optional
+
+import platformdirs
+from pydantic import ValidationError
+
+from .models import GrapeCoderConfig
+
+
+class ConfigManager:
+    """Manages loading, saving, and caching of Grape Coder configurations."""
+
+    def __init__(self):
+        self._config_dir = Path(platformdirs.user_config_dir("grape-coder"))
+        self._config_file = self._config_dir / "providers.json"
+        self._cached_config: Optional[GrapeCoderConfig] = None
+        self._cached_mtime: Optional[float] = None
+
+        # Ensure config directory exists with proper permissions
+        self._ensure_config_directory()
+
+    def _ensure_config_directory(self) -> None:
+        """Create config directory with secure permissions."""
+        try:
+            self._config_dir.mkdir(parents=True, exist_ok=True)
+            # Set directory permissions to 700 (user read/write/execute only)
+            os.chmod(self._config_dir, 0o700)
+        except OSError as e:
+            raise RuntimeError(f"Failed to create config directory: {e}")
+
+    def _set_secure_permissions(self, file_path: Path) -> None:
+        """Set secure file permissions (600 - user read/write only)."""
+        try:
+            os.chmod(file_path, 0o600)
+        except OSError as e:
+            raise RuntimeError(f"Failed to set secure permissions on {file_path}: {e}")
+
+    def load_config(self) -> GrapeCoderConfig:
+        """Load configuration from file, using cache if available."""
+        try:
+            # Check if file exists and get modification time
+            if not self._config_file.exists():
+                return GrapeCoderConfig()
+
+            current_mtime = self._config_file.stat().st_mtime
+
+            # Use cached config if file hasn't changed
+            if (
+                self._cached_config is not None
+                and self._cached_mtime is not None
+                and current_mtime == self._cached_mtime
+            ):
+                return self._cached_config
+
+            # Load and validate configuration
+            with open(self._config_file, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+
+            config = GrapeCoderConfig(**config_data)
+
+            # Update cache
+            self._cached_config = config
+            self._cached_mtime = current_mtime
+
+            return config
+
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in configuration file: {e}")
+        except ValidationError as e:
+            raise ValueError(f"Configuration validation failed: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load configuration: {e}")
+
+    def save_config(self, config: GrapeCoderConfig) -> None:
+        """Save configuration to file with secure permissions."""
+        try:
+            # Validate configuration before saving
+            config.model_validate(config.model_dump())
+
+            # Write to temporary file first, then move to prevent corruption
+            temp_file = self._config_file.with_suffix(".tmp")
+
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(config.model_dump(), f, indent=4, ensure_ascii=False)
+
+            # Set secure permissions on temp file
+            self._set_secure_permissions(temp_file)
+
+            # Atomic move to final location
+            temp_file.replace(self._config_file)
+
+            # Update cache
+            self._cached_config = config
+            self._cached_mtime = self._config_file.stat().st_mtime
+
+        except ValidationError as e:
+            raise ValueError(f"Configuration validation failed: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to save configuration: {e}")
+
+    def config_exists(self) -> bool:
+        """Check if configuration file exists."""
+        return self._config_file.exists()
+
+    def get_config_path(self) -> str:
+        """Get the path to the configuration file."""
+        return str(self._config_file)
+
+    def clear_cache(self) -> None:
+        """Clear the configuration cache."""
+        self._cached_config = None
+        self._cached_mtime = None
+
+
+# Global config manager instance
+_config_manager = None
+
+
+def get_config_manager() -> ConfigManager:
+    """Get the global config manager instance."""
+    global _config_manager
+    if _config_manager is None:
+        _config_manager = ConfigManager()
+    return _config_manager
