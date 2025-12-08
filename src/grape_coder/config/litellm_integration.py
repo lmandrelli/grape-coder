@@ -41,13 +41,13 @@ class LiteLLMModel:
     """LiteLLM wrapper for strands compatibility."""
 
     def __init__(self, provider_config: ProviderConfig, model_name: str):
-        self._model = create_litellm_model(provider_config, model_name)
+        self.model = create_litellm_model(provider_config, model_name)
         self.provider_config = provider_config
         self.model_name = model_name
 
     def __getattr__(self, name):
         """Delegate all attribute access to the underlying model."""
-        return getattr(self._model, name)
+        return getattr(self.model, name)
 
     @property
     def model_id(self) -> str:

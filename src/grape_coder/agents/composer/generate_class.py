@@ -1,9 +1,6 @@
-import os
-
-from dotenv import load_dotenv
 from strands import Agent
-from strands.models.mistral import MistralModel
 
+from grape_coder.config.manager import get_config_manager
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -13,8 +10,6 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-load_dotenv()
-
 
 def create_class_agent(work_path: str) -> Agent:
     """Create an agent for creating reusable CSS classes and HTML components"""
@@ -22,18 +17,33 @@ def create_class_agent(work_path: str) -> Agent:
     # Set work_path for tools
     set_work_path(work_path)
 
-    # Get configuration from environment variables
-    api_key = os.getenv("MISTRAL_API_KEY")
-    model_name = os.getenv("MISTRAL_MODEL_NAME", "mistral-large-latest")
+    # Load configuration
+    config_manager = get_config_manager()
+    config = config_manager.load_config()
 
-    if not api_key:
-        raise ValueError("MISTRAL_API_KEY environment variable is required.")
+    # Validate configuration
+    if not config.agents:
+        raise ValueError(
+            "No agents configured. Run 'grape-coder config' to set up providers and agents."
+        )
 
-    # Create Mistral model
-    model = MistralModel(
-        api_key=api_key,
-        model_id=model_name,
-    )
+    agent_name = "class_generator"
+    if agent_name not in config.agents:
+        available_agents = list(config.agents.keys())
+        raise ValueError(
+            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
+            "Run 'grape-coder config' to manage agents."
+        )
+
+    agent_config = config.agents[agent_name]
+    provider_config = config.providers[agent_config.provider_ref]
+
+    # Create model using ProviderFactory
+    from ...config import ProviderFactory
+
+    model = ProviderFactory.create_model(
+        provider_config, agent_config.model_name
+    ).model
 
     # Create agent with class creation tools
     system_prompt = """You are a CSS class and HTML component specialist.
@@ -55,7 +65,7 @@ Best practices:
 
 Always output clean, well-documented code."""
 
-    agent = Agent(
+    return Agent(
         model=model,
         tools=[
             list_files,
@@ -65,8 +75,6 @@ Always output clean, well-documented code."""
             glob_files,
         ],
         system_prompt=system_prompt,
-        name="Class Agent",
+        name="class_generator",
         description="AI assistant for creating reusable CSS classes and components",
     )
-
-    return agent
