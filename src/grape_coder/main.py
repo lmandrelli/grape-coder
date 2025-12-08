@@ -6,11 +6,8 @@ from typing import Optional
 import typer
 from rich.console import Console
 from strands.multiagent import Swarm
-from strands.multiagent import GraphBuilder
-from strands.multiagent.base import Status
-from strands.multiagent.graph import GraphState
 
-from .agents.code import create_code_agent
+from .agents.composer import build_composer
 from .agents.planner import (
     create_architect_agent,
     create_content_planner_agent,
@@ -18,81 +15,9 @@ from .agents.planner import (
     create_researcher_agent,
     create_todo_generator_agent,
 )
-from .agents.css import create_css_agent
-from .agents.generate_class import create_class_agent
-from .agents.orchestrator import create_orchestrator_agent
-from .agents.text import create_text_agent
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
-
-
-def all_parallel_agents_complete(required_nodes: list[str]):
-    """Factory function to create AND condition for multiple dependencies.
-    
-    This ensures the code_agent waits for ALL parallel agents to complete
-    before starting assembly.
-    """
-    def check_all_complete(state: GraphState) -> bool:
-        return all(
-            node_id in state.results and state.results[node_id].status == Status.COMPLETED
-            for node_id in required_nodes
-        )
-    return check_all_complete
-
-
-def build_generation_graph(work_path: str):
-    """
-    Build a multi-agent graph for web page generation.
-    
-    Graph structure:
-        orchestrator
-            ├── class_agent  ─┐
-            ├── css_agent    ─┼──> code_agent
-            └── text_agent   ─┘
-    
-    The orchestrator analyzes the task and creates a distribution plan.
-    The three parallel agents (class, css, text) work simultaneously.
-    The code_agent assembles everything into the final HTML output.
-    """
-    # Create all agents
-    orchestrator = create_orchestrator_agent()
-    class_agent = create_class_agent()
-    css_agent = create_css_agent()
-    text_agent = create_text_agent()
-    code_agent = create_code_agent(work_path)
-    
-    # Build the graph
-    builder = GraphBuilder()
-    
-    # Add nodes
-    builder.add_node(orchestrator, "orchestrator")
-    builder.add_node(class_agent, "class_agent")
-    builder.add_node(css_agent, "css_agent")
-    builder.add_node(text_agent, "text_agent")
-    builder.add_node(code_agent, "code_agent")
-    
-    # Add edges: orchestrator -> parallel agents
-    builder.add_edge("orchestrator", "class_agent")
-    builder.add_edge("orchestrator", "css_agent")
-    builder.add_edge("orchestrator", "text_agent")
-    
-    # Add edges: parallel agents -> code_agent (wait for ALL to complete)
-    parallel_agents = ["class_agent", "css_agent", "text_agent"]
-    condition = all_parallel_agents_complete(parallel_agents)
-    
-    builder.add_edge("class_agent", "code_agent", condition=condition)
-    builder.add_edge("css_agent", "code_agent", condition=condition)
-    builder.add_edge("text_agent", "code_agent", condition=condition)
-    
-    # Set entry point
-    builder.set_entry_point("orchestrator")
-    
-    # Configure execution limits
-    builder.set_execution_timeout(600)  # 10 minutes max
-    
-    # Build and return the graph
-    return builder.build()
 
 
 def header():
@@ -154,11 +79,10 @@ def code(
                 if not user_input.strip():
                     continue
 
-                # Planner - Create swarm for website development planning
-                """
-                console.print(
-                    "[bold blue]🚀 Planning website development with agent swarm...[/bold blue]"
-                )
+                console.print("[bold green]Agent:[/bold green]")
+
+                # Planner - Create development plan
+                console.print("[green]📄 Planner...[/green]")
 
                 try:
                     # Create specialized agents
@@ -183,10 +107,6 @@ def code(
                     swarm_prompt = f"Create a comprehensive website development plan for: {user_input}"
                     swarm_result = swarm(swarm_prompt)
 
-                    console.print(
-                        "[bold green]✅ Swarm planning completed successfully![/bold green]"
-                    )
-
                     # Extract the complete plan from the swarm
                     complete_plan = ""
                     for node_name, node_result in swarm_result.results.items():
@@ -194,17 +114,13 @@ def code(
                             complete_plan += f"\n=== {node_name.upper()} OUTPUT ===\n{node_result.result}\n"
 
                     # Create todo generator agent
-                    console.print(
-                        "[bold blue]📋 Generating todo list from development plan...[/bold blue]"
-                    )
+                    console.print("[green]📋 Todo[/green]")
 
                     todo_generator = create_todo_generator_agent(str(work_path))
 
                     # Generate structured todo list from the swarm's output
                     todo_prompt = f"Create a structured todo list from this website development plan:\n{complete_plan}"
                     todo_result = todo_generator(todo_prompt)
-
-                    console.print("[bold green]📋 Todo list generated![/bold green]")
 
                     # Use the generated todo as input for the code agent
                     graph_input = f"Execute the following todo list for website development:\n{todo_result}"
@@ -218,37 +134,11 @@ def code(
                     # Fallback to direct code execution
                     graph_input = user_input
 
-                console.print(
-                    "[bold blue]🤖 Invoking Code Agent to implement to-do...[/bold blue]"
-                )
-                """
+                # Composer - Create components
+                console.print("[green]📚 Composer[/green]")
 
-                # Graph - Build and execute the multi-agent graph
-                console.print("[bold yellow]🚀 Starting multi-agent generation...[/bold yellow]")
-                
-                graph = build_generation_graph(str(work_path))
-                code_input = graph(user_input)
-                
-                # Display execution results
-                console.print(f"\n[bold blue]📊 Execution Status:[/bold blue] {code_input.status}")
-                console.print(f"[dim]Execution order: {[node.node_id for node in code_input.execution_order]}[/dim]")
-                console.print(f"[dim]Total nodes: {code_input.total_nodes} | Completed: {code_input.completed_nodes} | Failed: {code_input.failed_nodes}[/dim]")
-                console.print(f"[dim]Execution time: {code_input.execution_time}ms[/dim]")
-
-                # Get the final output from code_agent
-                if "code_agent" in code_input.results:
-                    code_result = code_input.results["code_agent"].result
-                    console.print(f"\n[bold green]✅ Final Output:[/bold green]\n{code_result}")
-                else:
-                    console.print("[yellow]⚠️ No final output from code_agent[/yellow]")
-                    # Show available results
-                    for node_id, node_result in code_input.results.items():
-                        console.print(f"\n[bold cyan]{node_id}:[/bold cyan] {node_result.result}")
-
-                code_agent = create_code_agent(str(work_path))
-                response = code_agent(code_input)
-
-                console.print(f"[bold green]Agent:[/bold green] {response}")
+                graph = build_composer(str(work_path))
+                _ = graph(graph_input)
 
             except KeyboardInterrupt:
                 console.print("\n[yellow]Goodbye![/yellow]")
