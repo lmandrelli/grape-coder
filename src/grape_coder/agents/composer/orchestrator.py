@@ -1,7 +1,4 @@
-"""Agent orchestrateur qui répartit les tâches entre les différents agents"""
-
 import os
-from typing import List
 
 from dotenv import load_dotenv
 from strands import Agent
@@ -71,6 +68,7 @@ Be thorough and break down the project into specific, actionable tasks for each 
     )
 
     return agent
+
 
 @tool
 def validate_distribution(xml_distribution: str) -> str:
