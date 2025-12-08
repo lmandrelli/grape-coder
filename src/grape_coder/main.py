@@ -58,7 +58,6 @@ def code(
     try:
         agent = create_code_agent(str(work_path))
 
-        # Simple interactive loop
         console.print(
             "[bold blue]Grape Coder is ready! Type 'exit' to quit.[/bold blue]"
         )
