@@ -35,12 +35,10 @@ def create_text_agent() -> Agent:
 Your role is to generate compelling, clear, and engaging text content for web pages.
 
 Available tools:
-- generate_heading: Create headings and titles
-- generate_paragraph: Create body text and descriptions
-- generate_cta: Create call-to-action text
-- generate_list_content: Create list items (features, benefits, etc.)
-- generate_meta_content: Create SEO meta content (title, description)
-- get_all_text: Get all generated text content
+- edit_file: Create or update text content files
+- read_file: Read existing text files to check or modify them
+- list_created_files: List all text files created by this agent
+- append_to_file: Append text content to an existing file
 
 Best practices:
 - Write clear, concise, and engaging copy
@@ -49,12 +47,17 @@ Best practices:
 - Include relevant keywords naturally
 - Keep accessibility in mind (clear language)
 - Create scannable content with varied sentence lengths
+- Organize content in files (e.g., content/headings.txt, content/paragraphs.txt)
 
 Always match the brand voice and target audience specified."""
 
     agent = Agent(
         model=model,
         tools=[
+            edit_file,
+            read_file,
+            list_created_files,
+            append_to_file,
         ],
         system_prompt=system_prompt,
         name="Text Agent",
@@ -62,3 +65,128 @@ Always match the brand voice and target audience specified."""
     )
 
     return agent
+
+
+@tool
+def edit_file(path: str, content: str) -> str:
+    """
+    Create or update a text content file.
+    
+    Args:
+        path: The file path where to write (relative to project root or absolute)
+        content: The text content to write
+    
+    Returns:
+        Success message with file path
+        
+    Examples:
+        - edit_file("content/headings.txt", "Welcome to Our Website")
+        - edit_file("content/hero.txt", "Discover amazing products...")
+    """
+    try:
+        # Ensure the directory exists
+        directory = os.path.dirname(path)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory, exist_ok=True)
+            
+        # Write the content to the file
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # Store in registry for tracking
+        _text_registry[path] = {
+            'path': path,
+            'size': len(content),
+            'lines': content.count('\n') + 1,
+            'words': len(content.split()),
+        }
+        
+        return f"✅ Text file successfully created/updated: {path} ({_text_registry[path]['words']} words, {_text_registry[path]['lines']} lines)"
+        
+    except Exception as e:
+        return f"❌ Error writing text file {path}: {str(e)}"
+
+
+@tool
+def read_file(path: str) -> str:
+    """
+    Read the content of an existing text file.
+    
+    Args:
+        path: The file path to read
+    
+    Returns:
+        The file content or error message
+    """
+    try:
+        if not os.path.exists(path):
+            return f"❌ File not found: {path}"
+            
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        words = len(content.split())
+        lines = content.count('\n') + 1
+        return f"📄 Content of {path} ({words} words, {lines} lines):\n\n{content}"
+        
+    except Exception as e:
+        return f"❌ Error reading file {path}: {str(e)}"
+
+
+@tool
+def append_to_file(path: str, content: str) -> str:
+    """
+    Append text content to an existing file.
+    
+    Args:
+        path: The file path to append to
+        content: The text content to append
+    
+    Returns:
+        Success message with file path
+    """
+    try:
+        if not os.path.exists(path):
+            return f"❌ File not found: {path}. Use edit_file to create it first."
+            
+        # Append the content to the file
+        with open(path, 'a', encoding='utf-8') as f:
+            f.write('\n\n')
+            f.write(content)
+        
+        # Update registry
+        with open(path, 'r', encoding='utf-8') as f:
+            new_content = f.read()
+            
+        _text_registry[path] = {
+            'path': path,
+            'size': len(new_content),
+            'lines': new_content.count('\n') + 1,
+            'words': len(new_content.split()),
+        }
+        
+        return f"✅ Content appended to {path} (now {_text_registry[path]['words']} words, {_text_registry[path]['lines']} lines)"
+        
+    except Exception as e:
+        return f"❌ Error appending to file {path}: {str(e)}"
+
+
+@tool
+def list_created_files() -> str:
+    """
+    List all text files created by this agent.
+    
+    Returns:
+        List of created files with their details
+    """
+    if not _text_registry:
+        return "No text files created yet."
+    
+    result = "📁 Created text files:\n\n"
+    for path, info in _text_registry.items():
+        result += f"- {path}\n"
+        result += f"  Words: {info['words']}\n"
+        result += f"  Lines: {info['lines']}\n"
+        result += f"  Size: {info['size']} bytes\n\n"
+    
+    return result
