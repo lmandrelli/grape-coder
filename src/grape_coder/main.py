@@ -56,8 +56,6 @@ def code(
     )
 
     try:
-        agent = create_code_agent(str(work_path))
-
         console.print(
             "[bold blue]Grape Coder is ready! Type 'exit' to quit.[/bold blue]"
         )
@@ -73,8 +71,14 @@ def code(
                 if not user_input.strip():
                     continue
 
-                # Get agent response
-                response = agent(user_input)
+                # Planner
+
+                # Graph
+
+                # Code
+                code_agent = create_code_agent(str(work_path))
+                response = code_agent(user_input)
+
                 console.print(f"[bold green]Agent:[/bold green] {response}")
 
             except KeyboardInterrupt:
