@@ -6,7 +6,8 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from ...config import get_config_manager
+from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.config import get_config_manager
 
 
 def create_content_planner_agent(work_path: str) -> Agent:
@@ -15,7 +16,7 @@ def create_content_planner_agent(work_path: str) -> Agent:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model(agent_identifier="content_planner")
+    model = config_manager.get_model(AgentIdentifier.CONTENT_PLANNER)
 
     system_prompt = """You are a Website Content Planner specializing in planning content structure and organization.
 

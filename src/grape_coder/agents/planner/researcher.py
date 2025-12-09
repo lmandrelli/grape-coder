@@ -7,7 +7,8 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from ...config import get_config_manager
+from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.config import get_config_manager
 
 
 def create_researcher_agent(work_path: str) -> Agent:
@@ -16,7 +17,7 @@ def create_researcher_agent(work_path: str) -> Agent:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model(agent_identifier="researcher")
+    model = config_manager.get_model(AgentIdentifier.RESEARCHER)
 
     system_prompt = """You are a Website Development Researcher specializing in researching best practices, frameworks, and technologies for website development.
 

@@ -15,6 +15,7 @@ from grape_coder.tools.work_path import (
 )
 
 from ..config import get_config_manager
+from .identifiers import AgentIdentifier
 
 
 def create_code_agent(work_path: str) -> Agent:
@@ -25,7 +26,7 @@ def create_code_agent(work_path: str) -> Agent:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = cast(Model, config_manager.get_model(agent_identifier="code"))
+    model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant with access to file system tools.
