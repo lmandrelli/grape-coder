@@ -68,30 +68,36 @@ class ProviderFactory:
         """Get suggested model names for a provider type."""
         suggestions = {
             ProviderType.OPENAI: [
-            "gpt-5.1",
-            "gpt-5.1-codex-max",
+                "gpt-5.1",
+                "gpt-5.1-codex-max",
             ],
             ProviderType.ANTHROPIC: [
-            "claude-sonnet-4-5",
-            "claude-opus-4-5",
+                "claude-sonnet-4-5",
+                "claude-opus-4-5",
             ],
             ProviderType.GEMINI: [
-            "gemini-3-pro-preview",
-            "gemini-2.5-flash",
+                "gemini-3-pro-preview",
+                "gemini-2.5-flash",
             ],
             ProviderType.MISTRAL: [
-            "devstral-medium-2507",
-            "mistral-large-latest",
-            "ministral-8b-latest",
+                "mistral-large-latest",
+                "mistral-medium-latest",
+                "magistral-medium-latest",
+                "devstral-medium-latest",
+                "mistral-small-latest",
+                "magistral-small-latest",
+                "devstral-small-latest",
+                "ministral-14b-latest",
             ],
             ProviderType.OLLAMA: [
-            "ministral-3:14b",
-            "gpt-oss:20b",
+                "qwen3-coder:30b",
+                "ministral-3:14b",
+                "rmdashrf/webgen-preview-4b:Q8_0",
             ],
             ProviderType.CUSTOM: [
-            "zai-org/GLM-4.6",
-            "deepseek-ai/DeepSeek-V3.2",
-            "moonshotai/Kimi-K2-Thinking"
+                "zai-org/GLM-4.6",
+                "deepseek-ai/DeepSeek-V3.2",
+                "moonshotai/Kimi-K2-Thinking",
             ],
         }
         return suggestions.get(provider_type, [])
