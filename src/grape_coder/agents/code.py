@@ -1,4 +1,7 @@
+from typing import cast
+
 from strands import Agent
+from strands.models.model import Model
 
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
@@ -14,7 +17,7 @@ from grape_coder.tools.work_path import (
 from ..config import ProviderFactory, get_config_manager
 
 
-def create_code_agent(work_path: str, agent_name: str = "code") -> Agent:
+def create_code_agent(work_path: str) -> Agent:
     """Create a code agent with file system tools"""
 
     # Set work_path for tools
@@ -30,6 +33,8 @@ def create_code_agent(work_path: str, agent_name: str = "code") -> Agent:
             "No agents configured. Run 'grape-coder config' to set up providers and agents."
         )
 
+    agent_name = "code"
+
     if agent_name not in config.agents:
         available_agents = list(config.agents.keys())
         raise ValueError(
@@ -41,7 +46,9 @@ def create_code_agent(work_path: str, agent_name: str = "code") -> Agent:
     provider_config = config.providers[agent_config.provider_ref]
 
     # Create model using LiteLLM integration
-    model = ProviderFactory.create_model(provider_config, agent_config.model_name)
+    model = cast(
+        Model, ProviderFactory.create_model(provider_config, agent_config.model_name)
+    )
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant with access to file system tools.

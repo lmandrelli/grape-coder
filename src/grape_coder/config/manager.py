@@ -8,6 +8,9 @@ from pydantic import ValidationError
 
 from .models import GrapeCoderConfig
 
+# Global config manager instance
+_config_manager = None
+
 
 class ConfigManager:
     """Manages loading, saving, and caching of Grape Coder configurations."""
@@ -112,10 +115,6 @@ class ConfigManager:
         """Clear the configuration cache."""
         self._cached_config = None
         self._cached_mtime = None
-
-
-# Global config manager instance
-_config_manager = None
 
 
 def get_config_manager() -> ConfigManager:
