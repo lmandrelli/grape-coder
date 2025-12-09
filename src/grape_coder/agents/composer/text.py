@@ -1,6 +1,9 @@
-from strands import Agent
+import os
+
+from strands import Agent, tool
 
 from grape_coder.config.manager import get_config_manager
+from grape_coder.tools.agents import get_agent_tasks
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -8,7 +11,6 @@ from grape_coder.tools.work_path import (
     list_files,
     read_file,
     set_work_path,
-    get_agent_tasks,
 )
 
 
@@ -42,9 +44,7 @@ def create_text_agent(work_path: str) -> Agent:
     # Create model using ProviderFactory
     from ...config import ProviderFactory
 
-    model = ProviderFactory.create_model(
-        provider_config, agent_config.model_name
-    ).model
+    model = ProviderFactory.create_model(provider_config, agent_config.model_name).model
 
     # Create agent with text generation tools
     system_prompt = """You are a professional copywriter and content specialist.
@@ -71,14 +71,44 @@ Always match the brand voice and target audience specified."""
     return Agent(
         model=model,
         tools=[
-            list_files,
-            read_file,
-            edit_file,
-            grep_files,
-            glob_files,
+            list_files_contents,
+            read_file_contents,
+            edit_file_contents,
+            grep_files_contents,
+            glob_files_contents,
             get_agent_tasks,
         ],
         system_prompt=system_prompt,
         name="text_generator",
         description="AI assistant for generating web page text content",
     )
+
+
+@tool
+def list_files_contents(path: str = ".", recursive: bool = False) -> str:
+    path = os.path.join("contents", path)
+    return list_files(path, recursive)
+
+
+@tool
+def read_file_contents(path: str) -> str:
+    path = os.path.join("contents", path)
+    return read_file(path)
+
+
+@tool
+def edit_file_contents(path: str, content: str) -> str:
+    path = os.path.join("contents", path)
+    return edit_file(path, content)
+
+
+@tool
+def grep_files_contents(pattern: str, path: str = ".", file_pattern: str = "*") -> str:
+    path = os.path.join("contents", path)
+    return grep_files(pattern, path, file_pattern)
+
+
+@tool
+def glob_files_contents(pattern: str, path: str = ".") -> str:
+    path = os.path.join("contents", path)
+    return glob_files(pattern, path)

@@ -1,6 +1,9 @@
-from strands import Agent
+import os
+
+from strands import Agent, tool
 
 from grape_coder.config.manager import get_config_manager
+from grape_coder.tools.agents import get_agent_tasks
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -8,7 +11,6 @@ from grape_coder.tools.work_path import (
     list_files,
     read_file,
     set_work_path,
-    get_agent_tasks,
 )
 
 
@@ -42,9 +44,7 @@ def create_class_agent(work_path: str) -> Agent:
     # Create model using ProviderFactory
     from ...config import ProviderFactory
 
-    model = ProviderFactory.create_model(
-        provider_config, agent_config.model_name
-    ).model
+    model = ProviderFactory.create_model(provider_config, agent_config.model_name).model
 
     # Create agent with class creation tools
     system_prompt = """You are a CSS class and HTML component specialist.
@@ -80,3 +80,33 @@ Always output clean, well-documented code."""
         name="class_generator",
         description="AI assistant for creating reusable CSS classes and components",
     )
+
+
+@tool
+def list_files_css(path: str = ".", recursive: bool = False) -> str:
+    path = os.path.join("style", path)
+    return list_files(path, recursive)
+
+
+@tool
+def read_file_css(path: str) -> str:
+    path = os.path.join("style", path)
+    return read_file(path)
+
+
+@tool
+def edit_file_css(path: str, content: str) -> str:
+    path = os.path.join("style", path)
+    return edit_file(path, content)
+
+
+@tool
+def grep_files_css(pattern: str, path: str = ".", file_pattern: str = "*") -> str:
+    path = os.path.join("style", path)
+    return grep_files(pattern, path, file_pattern)
+
+
+@tool
+def glob_files_css(pattern: str, path: str = ".") -> str:
+    path = os.path.join("style", path)
+    return glob_files(pattern, path)
