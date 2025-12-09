@@ -109,7 +109,7 @@ class TestConfigManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch("platformdirs.user_config_dir", return_value=temp_dir):
                 manager = ConfigManager()
-                config = manager.load_config()
+                config = manager._load_config_from_file()
                 assert isinstance(config, GrapeCoderConfig)
                 assert config.providers == {}
                 assert config.agents == {}
@@ -138,7 +138,7 @@ class TestConfigManager:
                 manager.save_config(config)
 
                 # Load configuration
-                loaded_config = manager.load_config()
+                loaded_config = manager._load_config_from_file()
 
                 assert loaded_config.providers == config.providers
                 assert loaded_config.agents == config.agents
@@ -171,7 +171,7 @@ class TestConfigManager:
 
                 # Should raise ValueError
                 with pytest.raises(ValueError, match="Invalid JSON"):
-                    manager.load_config()
+                    manager._load_config_from_file()
 
     def test_cache_invalidation(self):
         """Test that cache is invalidated when file changes."""
@@ -180,7 +180,7 @@ class TestConfigManager:
                 manager = ConfigManager()
 
                 # Load initial config
-                config1 = manager.load_config()
+                config1 = manager._load_config_from_file()
 
                 # Save new config
                 config2 = GrapeCoderConfig(
@@ -195,7 +195,7 @@ class TestConfigManager:
                 manager.save_config(config2)
 
                 # Load again - should get updated config
-                config3 = manager.load_config()
+                config3 = manager._load_config_from_file()
                 assert config3.providers == config2.providers
                 assert config3.providers != config1.providers
 

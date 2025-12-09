@@ -19,12 +19,13 @@ class ConfigManager:
     def __init__(self):
         self._config_dir = Path(platformdirs.user_config_dir("grape-coder"))
         self._config_file = self._config_dir / "providers.json"
-        self._cached_config: Optional[GrapeCoderConfig] = None
-        self._cached_mtime: Optional[float] = None
+        self._config: Optional[GrapeCoderConfig] = None
         self._model_cache: dict[str, Any] = {}
 
         # Ensure config directory exists with proper permissions
         self._ensure_config_directory()
+        # Load configuration once during singleton initialization
+        self._config = self._load_config_from_file()
 
     def _ensure_config_directory(self) -> None:
         """Create config directory with secure permissions."""
@@ -42,34 +43,16 @@ class ConfigManager:
         except OSError as e:
             raise RuntimeError(f"Failed to set secure permissions on {file_path}: {e}")
 
-    def load_config(self) -> GrapeCoderConfig:
-        """Load configuration from file, using cache if available."""
+    def _load_config_from_file(self) -> GrapeCoderConfig:
+        """Load configuration from file."""
         try:
-            # Check if file exists and get modification time
             if not self._config_file.exists():
                 return GrapeCoderConfig()
 
-            current_mtime = self._config_file.stat().st_mtime
-
-            # Use cached config if file hasn't changed
-            if (
-                self._cached_config is not None
-                and self._cached_mtime is not None
-                and current_mtime == self._cached_mtime
-            ):
-                return self._cached_config
-
-            # Load and validate configuration
             with open(self._config_file, "r", encoding="utf-8") as f:
                 config_data = json.load(f)
 
-            config = GrapeCoderConfig(**config_data)
-
-            # Update cache
-            self._cached_config = config
-            self._cached_mtime = current_mtime
-
-            return config
+            return GrapeCoderConfig(**config_data)
 
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in configuration file: {e}")
@@ -96,9 +79,8 @@ class ConfigManager:
             # Atomic move to final location
             temp_file.replace(self._config_file)
 
-            # Update cache
-            self._cached_config = config
-            self._cached_mtime = self._config_file.stat().st_mtime
+            # Update cached config
+            self._config = config
 
         except ValidationError as e:
             raise ValueError(f"Configuration validation failed: {e}")
@@ -130,8 +112,12 @@ class ConfigManager:
         if agent_identifier in self._model_cache:
             return self._model_cache[agent_identifier]
 
-        # Load and validate configuration
-        config = self.load_config()
+        # Use config loaded during singleton initialization
+        if self._config is None:
+            # This shouldn't happen, but fallback just in case
+            self._config = self._load_config_from_file()
+
+        config = self._config
 
         # Validate agents configuration exists
         if not config.agents:
@@ -167,8 +153,7 @@ class ConfigManager:
 
     def clear_cache(self) -> None:
         """Clear the configuration cache."""
-        self._cached_config = None
-        self._cached_mtime = None
+        self._config = None
         self._model_cache.clear()
 
 

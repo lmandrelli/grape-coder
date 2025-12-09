@@ -43,7 +43,7 @@ class LiteLLMModel:
         self.provider_config = provider_config
         self.model_name = model_name
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """Delegate all attribute access to the underlying model."""
         return getattr(self.model, name)
 
