@@ -29,9 +29,7 @@ def _get_litellm_model_id(provider_config: ProviderConfig, model_name: str) -> s
     if provider_config.provider == ProviderType.CUSTOM:
         # For custom providers (OpenAI-compatible APIs), prepend openai/
         # This ensures LiteLLM treats it as an OpenAI-compatible endpoint
-        if not model_name.startswith("openai/"):
-            return f"openai/{model_name}"
-        return model_name
+        return f"openai/{model_name}"
 
     return f"{provider_prefix}/{model_name}"
 
@@ -45,7 +43,7 @@ class LiteLLMModel:
         self.provider_config = provider_config
         self.model_name = model_name
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """Delegate all attribute access to the underlying model."""
         return getattr(self.model, name)
 

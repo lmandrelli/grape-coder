@@ -1,11 +1,12 @@
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import platformdirs
 from pydantic import ValidationError
 
+from .litellm_integration import create_litellm_model
 from .models import GrapeCoderConfig
 
 # Global config manager instance
@@ -18,11 +19,13 @@ class ConfigManager:
     def __init__(self):
         self._config_dir = Path(platformdirs.user_config_dir("grape-coder"))
         self._config_file = self._config_dir / "providers.json"
-        self._cached_config: Optional[GrapeCoderConfig] = None
-        self._cached_mtime: Optional[float] = None
+        self.config: Optional[GrapeCoderConfig] = None
+        self._model_cache: dict[str, Any] = {}
 
         # Ensure config directory exists with proper permissions
         self._ensure_config_directory()
+        # Load configuration once during singleton initialization
+        self.config = self._load_config_from_file()
 
     def _ensure_config_directory(self) -> None:
         """Create config directory with secure permissions."""
@@ -40,34 +43,16 @@ class ConfigManager:
         except OSError as e:
             raise RuntimeError(f"Failed to set secure permissions on {file_path}: {e}")
 
-    def load_config(self) -> GrapeCoderConfig:
-        """Load configuration from file, using cache if available."""
+    def _load_config_from_file(self) -> GrapeCoderConfig:
+        """Load configuration from file."""
         try:
-            # Check if file exists and get modification time
             if not self._config_file.exists():
                 return GrapeCoderConfig()
 
-            current_mtime = self._config_file.stat().st_mtime
-
-            # Use cached config if file hasn't changed
-            if (
-                self._cached_config is not None
-                and self._cached_mtime is not None
-                and current_mtime == self._cached_mtime
-            ):
-                return self._cached_config
-
-            # Load and validate configuration
             with open(self._config_file, "r", encoding="utf-8") as f:
                 config_data = json.load(f)
 
-            config = GrapeCoderConfig(**config_data)
-
-            # Update cache
-            self._cached_config = config
-            self._cached_mtime = current_mtime
-
-            return config
+            return GrapeCoderConfig(**config_data)
 
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in configuration file: {e}")
@@ -94,9 +79,8 @@ class ConfigManager:
             # Atomic move to final location
             temp_file.replace(self._config_file)
 
-            # Update cache
-            self._cached_config = config
-            self._cached_mtime = self._config_file.stat().st_mtime
+            # Update cached config
+            self.config = config
 
         except ValidationError as e:
             raise ValueError(f"Configuration validation failed: {e}")
@@ -111,10 +95,66 @@ class ConfigManager:
         """Get the path to the configuration file."""
         return str(self._config_file)
 
+    def get_model(self, agent_identifier: str) -> Any:
+        """Get a model instance for the specified agent identifier.
+
+        Args:
+            agent_identifier: The name of the agent configuration
+
+        Returns:
+            A model instance ready for use
+
+        Raises:
+            ValueError: If configuration is missing or invalid
+            RuntimeError: If model creation fails
+        """
+        # Check model cache first
+        if agent_identifier in self._model_cache:
+            return self._model_cache[agent_identifier]
+
+        # Use config loaded during singleton initialization
+        if self.config is None:
+            # This shouldn't happen, but fallback just in case
+            self.config = self._load_config_from_file()
+
+        config = self.config
+
+        # Validate agents configuration exists
+        if not config.agents:
+            raise ValueError(
+                "No agents configured. Run 'grape-coder config' to set up providers and agents."
+            )
+
+        # Validate specific agent exists
+        if agent_identifier not in config.agents:
+            available_agents = list(config.agents.keys())
+            raise ValueError(
+                f"Agent '{agent_identifier}' not found. Available agents: {available_agents}. "
+                "Run 'grape-coder config' to manage agents."
+            )
+
+        # Get agent and provider configurations
+        agent_config = config.agents[agent_identifier]
+        provider_config = config.providers[agent_config.provider_ref]
+
+        # Create model
+        try:
+            model = create_litellm_model(provider_config, agent_config.model_name)
+
+            # Cache the model
+            self._model_cache[agent_identifier] = model
+
+            return model
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to create model for agent '{agent_identifier}': {e}"
+            )
+
     def clear_cache(self) -> None:
         """Clear the configuration cache."""
-        self._cached_config = None
-        self._cached_mtime = None
+        self.config = None
+        self._model_cache.clear()
 
 
 def get_config_manager() -> ConfigManager:

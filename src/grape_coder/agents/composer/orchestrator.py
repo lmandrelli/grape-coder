@@ -4,37 +4,16 @@ from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
-from grape_coder.config.manager import get_config_manager
+from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.config import get_config_manager
 
 
 def create_orchestrator_agent() -> MultiAgentBase:
     """Create an orchestrator agent that distributes tasks to specialized agents"""
 
-    # Load configuration
+    # Get model using the config manager
     config_manager = get_config_manager()
-    config = config_manager.load_config()
-
-    # Validate configuration
-    if not config.agents:
-        raise ValueError(
-            "No agents configured. Run 'grape-coder config' to set up providers and agents."
-        )
-
-    agent_name = "orchestrator"
-    if agent_name not in config.agents:
-        available_agents = list(config.agents.keys())
-        raise ValueError(
-            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
-            "Run 'grape-coder config' to manage agents."
-        )
-
-    agent_config = config.agents[agent_name]
-    provider_config = config.providers[agent_config.provider_ref]
-
-    # Create model using ProviderFactory
-    from ...config import ProviderFactory
-
-    model = ProviderFactory.create_model(provider_config, agent_config.model_name).model
+    model = config_manager.get_model(AgentIdentifier.ORCHESTRATOR)
 
     # Create agent with task distribution tools
     system_prompt = """You are a task orchestrator for web page generation.
