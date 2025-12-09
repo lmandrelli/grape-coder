@@ -64,9 +64,12 @@ Best practices:
 - Include relevant keywords naturally
 - Keep accessibility in mind (clear language)
 - Create scannable content with varied sentence lengths
-- Organize content in files (e.g., content/headings.txt, content/paragraphs.txt)
+- Organize content in files (e.g., headings.md, paragraphs.md)
 
-Always match the brand voice and target audience specified."""
+Always match the brand voice and target audience specified.
+
+Use tools to create all MarkDown files in . folder.
+"""
 
     return Agent(
         model=model,
