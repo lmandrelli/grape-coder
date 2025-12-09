@@ -62,7 +62,8 @@ Available tools:
 - glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL
 
-Always be helpful and provide clear explanations of what you're doing."""
+Before doing anything list files to see what have been done.
+"""
 
     agent = Agent(
         model=model,
