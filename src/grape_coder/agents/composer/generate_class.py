@@ -1,6 +1,8 @@
 from strands import Agent
 
 from grape_coder.config import get_config_manager
+from grape_coder.agents.identifiers import AgentIdentifier
+
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -20,7 +22,7 @@ def create_class_agent(work_path: str) -> Agent:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model(agent_identifier="class_generator")
+    model = config_manager.get_model(AgentIdentifier.GENERATE_CLASS)
 
     # Create agent with class creation tools
     system_prompt = """You are a CSS class and HTML component specialist.

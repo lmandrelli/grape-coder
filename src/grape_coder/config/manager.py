@@ -19,13 +19,13 @@ class ConfigManager:
     def __init__(self):
         self._config_dir = Path(platformdirs.user_config_dir("grape-coder"))
         self._config_file = self._config_dir / "providers.json"
-        self._config: Optional[GrapeCoderConfig] = None
+        self.config: Optional[GrapeCoderConfig] = None
         self._model_cache: dict[str, Any] = {}
 
         # Ensure config directory exists with proper permissions
         self._ensure_config_directory()
         # Load configuration once during singleton initialization
-        self._config = self._load_config_from_file()
+        self.config = self._load_config_from_file()
 
     def _ensure_config_directory(self) -> None:
         """Create config directory with secure permissions."""
@@ -80,7 +80,7 @@ class ConfigManager:
             temp_file.replace(self._config_file)
 
             # Update cached config
-            self._config = config
+            self.config = config
 
         except ValidationError as e:
             raise ValueError(f"Configuration validation failed: {e}")
@@ -113,11 +113,11 @@ class ConfigManager:
             return self._model_cache[agent_identifier]
 
         # Use config loaded during singleton initialization
-        if self._config is None:
+        if self.config is None:
             # This shouldn't happen, but fallback just in case
-            self._config = self._load_config_from_file()
+            self.config = self._load_config_from_file()
 
-        config = self._config
+        config = self.config
 
         # Validate agents configuration exists
         if not config.agents:
@@ -153,7 +153,7 @@ class ConfigManager:
 
     def clear_cache(self) -> None:
         """Clear the configuration cache."""
-        self._config = None
+        self.config = None
         self._model_cache.clear()
 
 

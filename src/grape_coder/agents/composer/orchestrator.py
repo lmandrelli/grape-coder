@@ -1,6 +1,7 @@
 from strands import Agent
 from strands.tools import tool
 
+from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.config import get_config_manager
 
 
@@ -9,7 +10,7 @@ def create_orchestrator_agent() -> Agent:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model(agent_identifier="orchestrator")
+    model = config_manager.get_model(AgentIdentifier.ORCHESTRATOR)
 
     # Create agent with task distribution tools
     system_prompt = """You are a task orchestrator for web page generation.
