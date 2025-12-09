@@ -47,8 +47,8 @@ def create_class_agent(work_path: str) -> Agent:
     model = ProviderFactory.create_model(provider_config, agent_config.model_name).model
 
     # Create agent with class creation tools
-    system_prompt = """You are a CSS class and HTML component specialist.
-Your role is to create reusable, well-structured CSS classes and HTML component templates.
+    system_prompt = """You are a CSS class specialist.
+Your role is to create reusable, well-structured CSS classes.
 
 Available tools:
 - list_files: List files and directories in a path
@@ -62,18 +62,20 @@ Best practices:
 - Create mobile-first responsive classes
 - Keep classes single-purpose and composable
 - Document each class with its purpose and usage
-- Organize files logically (e.g., components/, utilities/, layouts/)
 
-Always output clean, well-documented code."""
+Always output clean, well-documented code.
+
+Use tools to create all css files in . folder.
+"""
 
     return Agent(
         model=model,
         tools=[
-            list_files,
-            read_file,
-            edit_file,
-            grep_files,
-            glob_files,
+            list_files_css,
+            read_file_css,
+            edit_file_css,
+            grep_files_css,
+            glob_files_css,
             get_agent_tasks,
         ],
         system_prompt=system_prompt,
