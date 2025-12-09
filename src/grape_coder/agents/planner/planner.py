@@ -1,11 +1,9 @@
 from strands.multiagent import Swarm
 
-from .agents import (
-    create_architect_agent,
-    create_content_planner_agent,
-    create_designer_agent,
-    create_researcher_agent,
-)
+from .architect import create_architect_agent
+from .content_planner import create_content_planner_agent
+from .designer import create_designer_agent
+from .researcher import create_researcher_agent
 
 
 def build_planner(work_path: str):
