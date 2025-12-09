@@ -1,10 +1,9 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from grape_coder.config import (
-    ProviderFactory,
     LiteLLMModel,
     ProviderConfig,
+    ProviderFactory,
     ProviderType,
 )
 
@@ -48,7 +47,7 @@ class TestProviderFactory:
         mock_strands_model.return_value = mock_model_instance
 
         provider_config = ProviderConfig(
-            provider=ProviderType.OPENAI, api_key="test-key"
+            provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
         )
 
         model = ProviderFactory.create_model(provider_config, "gpt-4o")
@@ -68,10 +67,10 @@ class TestLiteLLMModel:
         mock_strands_model.return_value = mock_model_instance
 
         provider_config = ProviderConfig(
-            provider=ProviderType.OPENAI, api_key="test-key"
+            provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
         )
 
-        model = LiteLLMModel(provider_config, "gpt-4o")
+        _ = LiteLLMModel(provider_config, "gpt-4o")
 
         # Verify the underlying model was created correctly
         mock_strands_model.assert_called_once_with(
@@ -90,7 +89,7 @@ class TestLiteLLMModel:
             api_base_url="https://api.example.com",
         )
 
-        model = LiteLLMModel(provider_config, "custom-model")
+        _ = LiteLLMModel(provider_config, "custom-model")
 
         # Verify the model ID is prefixed with openai/ for custom providers
         mock_strands_model.assert_called_once_with(
@@ -105,7 +104,7 @@ class TestLiteLLMModel:
         mock_strands_model.return_value = mock_model_instance
 
         provider_config = ProviderConfig(
-            provider=ProviderType.OPENAI, api_key="test-key"
+            provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
         )
 
         model = LiteLLMModel(provider_config, "gpt-4o")
@@ -122,7 +121,7 @@ class TestLiteLLMModel:
         mock_strands_model.return_value = mock_model_instance
 
         provider_config = ProviderConfig(
-            provider=ProviderType.OPENAI, api_key="test-key"
+            provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
         )
 
         model = LiteLLMModel(provider_config, "gpt-4o")

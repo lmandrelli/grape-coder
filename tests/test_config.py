@@ -1,16 +1,15 @@
-import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from grape_coder.config import (
-    ProviderConfig,
     AgentConfig,
-    GrapeCoderConfig,
-    ProviderType,
     ConfigManager,
+    GrapeCoderConfig,
+    ProviderConfig,
+    ProviderType,
 )
 
 
@@ -19,7 +18,9 @@ class TestProviderConfig:
 
     def test_valid_provider_config(self):
         """Test creating a valid provider configuration."""
-        config = ProviderConfig(provider=ProviderType.OPENAI, api_key="test-key")
+        config = ProviderConfig(
+            provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
+        )
         assert config.provider == ProviderType.OPENAI
         assert config.api_key == "test-key"
         assert config.api_base_url is None
@@ -29,7 +30,9 @@ class TestProviderConfig:
         with pytest.raises(
             ValueError, match="api_base_url is required for custom providers"
         ):
-            ProviderConfig(provider=ProviderType.CUSTOM, api_key="test-key")
+            ProviderConfig(
+                provider=ProviderType.CUSTOM, api_key="test-key", api_base_url=None
+            )
 
     def test_custom_provider_with_base_url(self):
         """Test custom provider with base URL."""
@@ -66,7 +69,7 @@ class TestGrapeCoderConfig:
         config = GrapeCoderConfig(
             providers={
                 "openai": ProviderConfig(
-                    provider=ProviderType.OPENAI, api_key="test-key"
+                    provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
                 )
             },
             agents={"code": AgentConfig(provider_ref="openai", model_name="gpt-4o")},
@@ -96,7 +99,7 @@ class TestConfigManager:
         """Test that initialization creates config directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch("platformdirs.user_config_dir", return_value=temp_dir):
-                manager = ConfigManager()
+                _ = ConfigManager()
                 config_dir = Path(temp_dir)
                 assert config_dir.exists()
                 assert config_dir.is_dir()
@@ -121,7 +124,9 @@ class TestConfigManager:
                 config = GrapeCoderConfig(
                     providers={
                         "openai": ProviderConfig(
-                            provider=ProviderType.OPENAI, api_key="test-key"
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
                         )
                     },
                     agents={
@@ -181,7 +186,9 @@ class TestConfigManager:
                 config2 = GrapeCoderConfig(
                     providers={
                         "openai": ProviderConfig(
-                            provider=ProviderType.OPENAI, api_key="test-key"
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
                         )
                     }
                 )
