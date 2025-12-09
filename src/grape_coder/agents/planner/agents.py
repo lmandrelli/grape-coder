@@ -1,5 +1,3 @@
-import os
-
 from strands import Agent
 
 from grape_coder.tools.web import fetch_url

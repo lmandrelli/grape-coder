@@ -1,5 +1,3 @@
-"""Agents package for grape-coder"""
-
 from .code import create_code_agent
 
 # Validate configuration on module import
@@ -24,7 +22,7 @@ except Exception as e:
         f"Configuration validation failed: {e}. Run 'grape-coder config' to set up.",
         UserWarning,
     )
-    
+
 __all__ = [
     "create_code_agent",
 ]

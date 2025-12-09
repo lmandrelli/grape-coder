@@ -1,19 +1,17 @@
-import os
-
 from strands import Agent
 
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
+    get_agent_tasks,
     glob_files,
     grep_files,
     list_files,
     read_file,
     set_work_path,
-    get_agent_tasks,
 )
 
-from ..config import get_config_manager, ProviderFactory
+from ..config import ProviderFactory, get_config_manager
 
 
 def create_code_agent(work_path: str, agent_name: str = "code") -> Agent:
