@@ -60,7 +60,7 @@ def build_composer(work_path: str):
     builder.add_edge("orchestrator", "text_agent")
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
-    parallel_agents = ["class_agent", "css_agent", "text_agent"]
+    parallel_agents = ["class_agent", "text_agent"]
     condition = all_parallel_agents_complete(parallel_agents)
 
     builder.add_edge("class_agent", "code_agent", condition=condition)

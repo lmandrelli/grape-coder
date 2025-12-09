@@ -49,21 +49,19 @@ You must analyze the requirements and create a task distribution plan in XML for
 
 Output format example:
 <task_distribution>
-    <class_agent>
+    <class_generator>
         <task>Create a navigation component class</task>
         <task>Create a card component class</task>
-    </class_agent>
-    <css_agent>
         <task>Create color scheme with primary blue theme</task>
         <task>Create responsive layout styles</task>
-    </css_agent>
-    <text_agent>
+    </class_generator>
+    <text_generator>
         <task>Generate hero section headline and tagline</task>
         <task>Generate about us paragraph</task>
-    </text_agent>
-    <coder_agent>
+    </text_generator>
+    <code>
         <task>Combine all components into final HTML page</task>
-    </coder_agent>
+    </code>
 </task_distribution>
 
 Be thorough and break down the project into specific, actionable tasks for each agent."""
