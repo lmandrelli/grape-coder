@@ -3,10 +3,10 @@ from typing import cast
 from strands import Agent
 from strands.models.model import Model
 
+from grape_coder.tools.agents import get_agent_tasks
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
-    get_agent_tasks,
     glob_files,
     grep_files,
     list_files,
