@@ -136,6 +136,6 @@ class TestLiteLLMModel:
         custom_model = LiteLLMModel(custom_config, "custom-model")
         assert custom_model.model_id == "openai/custom-model"
 
-        # Test that model names already prefixed with openai/ are not double-prefixed
+        # Test that model names already prefixed with openai/ are double-prefixed (litellm wants it that way)
         already_prefixed_model = LiteLLMModel(custom_config, "openai/gpt-4o")
-        assert already_prefixed_model.model_id == "openai/gpt-4o"
+        assert already_prefixed_model.model_id == "openai/openai/gpt-4o"

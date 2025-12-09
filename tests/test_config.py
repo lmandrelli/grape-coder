@@ -109,7 +109,7 @@ class TestConfigManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch("platformdirs.user_config_dir", return_value=temp_dir):
                 manager = ConfigManager()
-                config = manager.load_config()
+                config = manager._load_config_from_file()
                 assert isinstance(config, GrapeCoderConfig)
                 assert config.providers == {}
                 assert config.agents == {}
@@ -138,7 +138,7 @@ class TestConfigManager:
                 manager.save_config(config)
 
                 # Load configuration
-                loaded_config = manager.load_config()
+                loaded_config = manager._load_config_from_file()
 
                 assert loaded_config.providers == config.providers
                 assert loaded_config.agents == config.agents
@@ -171,7 +171,7 @@ class TestConfigManager:
 
                 # Should raise ValueError
                 with pytest.raises(ValueError, match="Invalid JSON"):
-                    manager.load_config()
+                    manager._load_config_from_file()
 
     def test_cache_invalidation(self):
         """Test that cache is invalidated when file changes."""
@@ -180,7 +180,7 @@ class TestConfigManager:
                 manager = ConfigManager()
 
                 # Load initial config
-                config1 = manager.load_config()
+                config1 = manager._load_config_from_file()
 
                 # Save new config
                 config2 = GrapeCoderConfig(
@@ -195,6 +195,189 @@ class TestConfigManager:
                 manager.save_config(config2)
 
                 # Load again - should get updated config
-                config3 = manager.load_config()
+                config3 = manager._load_config_from_file()
                 assert config3.providers == config2.providers
                 assert config3.providers != config1.providers
+
+    def test_get_model_success(self):
+        """Test successful model retrieval."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("platformdirs.user_config_dir", return_value=temp_dir):
+                manager = ConfigManager()
+
+                # Create test configuration
+                config = GrapeCoderConfig(
+                    providers={
+                        "openai": ProviderConfig(
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
+                        )
+                    },
+                    agents={
+                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                    },
+                )
+                manager.save_config(config)
+
+                # Mock the create_litellm_model function
+                with patch(
+                    "grape_coder.config.manager.create_litellm_model"
+                ) as mock_create:
+                    mock_model = "mock_model"
+                    mock_create.return_value = mock_model
+
+                    # Get model
+                    model = manager.get_model("code")
+
+                    # Verify model creation was called correctly
+                    mock_create.assert_called_once_with(
+                        config.providers["openai"], config.agents["code"].model_name
+                    )
+                    assert model == mock_model
+
+    def test_get_model_caching(self):
+        """Test that models are cached."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("platformdirs.user_config_dir", return_value=temp_dir):
+                manager = ConfigManager()
+
+                # Create test configuration
+                config = GrapeCoderConfig(
+                    providers={
+                        "openai": ProviderConfig(
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
+                        )
+                    },
+                    agents={
+                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                    },
+                )
+                manager.save_config(config)
+
+                # Mock the create_litellm_model function
+                with patch(
+                    "grape_coder.config.manager.create_litellm_model"
+                ) as mock_create:
+                    mock_model = "mock_model"
+                    mock_create.return_value = mock_model
+
+                    # Get model twice
+                    model1 = manager.get_model("code")
+                    model2 = manager.get_model("code")
+
+                    # Should only create model once (cached)
+                    mock_create.assert_called_once()
+                    assert model1 == mock_model
+                    assert model2 == mock_model
+
+    def test_get_model_no_agents_configured(self):
+        """Test get_model when no agents are configured."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("platformdirs.user_config_dir", return_value=temp_dir):
+                manager = ConfigManager()
+
+                # Save empty config
+                manager.save_config(GrapeCoderConfig())
+
+                # Should raise ValueError
+                with pytest.raises(ValueError, match="No agents configured"):
+                    manager.get_model("code")
+
+    def test_get_model_agent_not_found(self):
+        """Test get_model when agent is not found."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("platformdirs.user_config_dir", return_value=temp_dir):
+                manager = ConfigManager()
+
+                # Create test configuration with different agent
+                config = GrapeCoderConfig(
+                    providers={
+                        "openai": ProviderConfig(
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
+                        )
+                    },
+                    agents={
+                        "other_agent": AgentConfig(
+                            provider_ref="openai", model_name="gpt-4o"
+                        )
+                    },
+                )
+                manager.save_config(config)
+
+                # Should raise ValueError
+                with pytest.raises(ValueError, match="Agent 'code' not found"):
+                    manager.get_model("code")
+
+    def test_get_model_creation_failure(self):
+        """Test get_model when model creation fails."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("platformdirs.user_config_dir", return_value=temp_dir):
+                manager = ConfigManager()
+
+                # Create test configuration
+                config = GrapeCoderConfig(
+                    providers={
+                        "openai": ProviderConfig(
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
+                        )
+                    },
+                    agents={
+                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                    },
+                )
+                manager.save_config(config)
+
+                # Mock the create_litellm_model function to raise exception
+                with patch(
+                    "grape_coder.config.manager.create_litellm_model"
+                ) as mock_create:
+                    mock_create.side_effect = Exception("Model creation failed")
+
+                    # Should raise RuntimeError
+                    with pytest.raises(RuntimeError, match="Failed to create model"):
+                        manager.get_model("code")
+
+    def test_clear_cache_clears_model_cache(self):
+        """Test that clear_cache also clears the model cache."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("platformdirs.user_config_dir", return_value=temp_dir):
+                manager = ConfigManager()
+
+                # Create test configuration
+                config = GrapeCoderConfig(
+                    providers={
+                        "openai": ProviderConfig(
+                            provider=ProviderType.OPENAI,
+                            api_key="test-key",
+                            api_base_url=None,
+                        )
+                    },
+                    agents={
+                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                    },
+                )
+                manager.save_config(config)
+
+                # Mock the create_litellm_model function
+                with patch(
+                    "grape_coder.config.manager.create_litellm_model"
+                ) as mock_create:
+                    mock_model = "mock_model"
+                    mock_create.return_value = mock_model
+
+                    # Get model to populate cache
+                    manager.get_model("code")
+                    assert len(manager._model_cache) == 1
+
+                    # Clear cache
+                    manager.clear_cache()
+
+                    # Model cache should be empty
+                    assert len(manager._model_cache) == 0
