@@ -1,11 +1,12 @@
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import platformdirs
 from pydantic import ValidationError
 
+from .litellm_integration import create_litellm_model
 from .models import GrapeCoderConfig
 
 # Global config manager instance
@@ -20,6 +21,7 @@ class ConfigManager:
         self._config_file = self._config_dir / "providers.json"
         self._cached_config: Optional[GrapeCoderConfig] = None
         self._cached_mtime: Optional[float] = None
+        self._model_cache: dict[str, Any] = {}
 
         # Ensure config directory exists with proper permissions
         self._ensure_config_directory()
@@ -111,10 +113,63 @@ class ConfigManager:
         """Get the path to the configuration file."""
         return str(self._config_file)
 
+    def get_model(self, agent_identifier: str) -> Any:
+        """Get a model instance for the specified agent identifier.
+
+        Args:
+            agent_identifier: The name of the agent configuration
+
+        Returns:
+            A model instance ready for use
+
+        Raises:
+            ValueError: If configuration is missing or invalid
+            RuntimeError: If model creation fails
+        """
+        # Check model cache first
+        if agent_identifier in self._model_cache:
+            return self._model_cache[agent_identifier]
+
+        # Load and validate configuration
+        config = self.load_config()
+
+        # Validate agents configuration exists
+        if not config.agents:
+            raise ValueError(
+                "No agents configured. Run 'grape-coder config' to set up providers and agents."
+            )
+
+        # Validate specific agent exists
+        if agent_identifier not in config.agents:
+            available_agents = list(config.agents.keys())
+            raise ValueError(
+                f"Agent '{agent_identifier}' not found. Available agents: {available_agents}. "
+                "Run 'grape-coder config' to manage agents."
+            )
+
+        # Get agent and provider configurations
+        agent_config = config.agents[agent_identifier]
+        provider_config = config.providers[agent_config.provider_ref]
+
+        # Create model
+        try:
+            model = create_litellm_model(provider_config, agent_config.model_name)
+
+            # Cache the model
+            self._model_cache[agent_identifier] = model
+
+            return model
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to create model for agent '{agent_identifier}': {e}"
+            )
+
     def clear_cache(self) -> None:
         """Clear the configuration cache."""
         self._cached_config = None
         self._cached_mtime = None
+        self._model_cache.clear()
 
 
 def get_config_manager() -> ConfigManager:

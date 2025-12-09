@@ -14,7 +14,7 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from ..config import ProviderFactory, get_config_manager
+from ..config import get_config_manager
 
 
 def create_code_agent(work_path: str) -> Agent:
@@ -23,32 +23,9 @@ def create_code_agent(work_path: str) -> Agent:
     # Set work_path for tools
     set_work_path(work_path)
 
-    # Load configuration
+    # Get model using the simplified config manager
     config_manager = get_config_manager()
-    config = config_manager.load_config()
-
-    # Validate configuration
-    if not config.agents:
-        raise ValueError(
-            "No agents configured. Run 'grape-coder config' to set up providers and agents."
-        )
-
-    agent_name = "code"
-
-    if agent_name not in config.agents:
-        available_agents = list(config.agents.keys())
-        raise ValueError(
-            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
-            "Run 'grape-coder config' to manage agents."
-        )
-
-    agent_config = config.agents[agent_name]
-    provider_config = config.providers[agent_config.provider_ref]
-
-    # Create model using LiteLLM integration
-    model = cast(
-        Model, ProviderFactory.create_model(provider_config, agent_config.model_name)
-    )
+    model = cast(Model, config_manager.get_model("code"))
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant with access to file system tools.

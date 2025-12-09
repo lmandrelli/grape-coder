@@ -8,36 +8,15 @@ from grape_coder.tools.work_path import (
 )
 
 from ...config import get_config_manager
-from ...config.litellm_integration import create_litellm_model
 
 
 def create_researcher_agent(work_path: str) -> Agent:
     """Create a researcher agent for website development research"""
     set_work_path(work_path)
 
-    # Load configuration
+    # Get model using the simplified config manager
     config_manager = get_config_manager()
-    config = config_manager.load_config()
-
-    # Validate configuration
-    if not config.agents:
-        raise ValueError(
-            "No agents configured. Run 'grape-coder config' to set up providers and agents."
-        )
-
-    agent_name = "researcher"
-    if agent_name not in config.agents:
-        available_agents = list(config.agents.keys())
-        raise ValueError(
-            f"Agent '{agent_name}' not found. Available agents: {available_agents}. "
-            "Run 'grape-coder config' to manage agents."
-        )
-
-    agent_config = config.agents[agent_name]
-    provider_config = config.providers[agent_config.provider_ref]
-
-    # Create model using LiteLLM integration
-    model = create_litellm_model(provider_config, agent_config.model_name)
+    model = config_manager.get_model("researcher")
 
     system_prompt = """You are a Website Development Researcher specializing in researching best practices, frameworks, and technologies for website development.
 
