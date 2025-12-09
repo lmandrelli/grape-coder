@@ -7,9 +7,9 @@ from grape_coder.config import get_config_manager
 def create_orchestrator_agent() -> Agent:
     """Create an orchestrator agent that distributes tasks to specialized agents"""
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("orchestrator")
+    model = config_manager.get_model(agent_identifier="orchestrator")
 
     # Create agent with task distribution tools
     system_prompt = """You are a task orchestrator for web page generation.

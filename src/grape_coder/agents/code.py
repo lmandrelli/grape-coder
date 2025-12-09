@@ -23,9 +23,9 @@ def create_code_agent(work_path: str) -> Agent:
     # Set work_path for tools
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = cast(Model, config_manager.get_model("code"))
+    model = cast(Model, config_manager.get_model(agent_identifier="code"))
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant with access to file system tools.

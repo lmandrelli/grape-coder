@@ -13,9 +13,9 @@ def create_content_planner_agent(work_path: str) -> Agent:
     """Create a content planner agent for content structure and organization"""
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("content_planner")
+    model = config_manager.get_model(agent_identifier="content_planner")
 
     system_prompt = """You are a Website Content Planner specializing in planning content structure and organization.
 

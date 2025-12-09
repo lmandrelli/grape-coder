@@ -18,9 +18,9 @@ def create_class_agent(work_path: str) -> Agent:
     # Set work_path for tools
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("class_generator")
+    model = config_manager.get_model(agent_identifier="class_generator")
 
     # Create agent with class creation tools
     system_prompt = """You are a CSS class and HTML component specialist.

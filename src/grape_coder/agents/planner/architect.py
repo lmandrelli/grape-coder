@@ -13,9 +13,9 @@ def create_architect_agent(work_path: str) -> Agent:
     """Create an architect agent for system architecture design"""
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("architect")
+    model = config_manager.get_model(agent_identifier="architect")
 
     system_prompt = """You are a Website Development Architect specializing in designing overall system architecture and technology stacks.
 

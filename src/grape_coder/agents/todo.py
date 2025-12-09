@@ -12,9 +12,9 @@ def create_todo_generator_agent(work_path: str) -> Agent:
     """Create a todo generator agent that creates structured todo lists"""
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("todo_generator")
+    model = config_manager.get_model(agent_identifier="todo_generator")
 
     system_prompt = """You are a Todo Generator Agent specializing in creating structured, actionable todo lists from website development plans.
 

@@ -13,9 +13,9 @@ def create_designer_agent(work_path: str) -> Agent:
     """Create a designer agent for UI/UX design"""
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("designer")
+    model = config_manager.get_model(agent_identifier="designer")
 
     system_prompt = """You are a Website UI/UX Designer specializing in creating user interface and user experience designs.
 

@@ -14,9 +14,9 @@ def create_researcher_agent(work_path: str) -> Agent:
     """Create a researcher agent for website development research"""
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("researcher")
+    model = config_manager.get_model(agent_identifier="researcher")
 
     system_prompt = """You are a Website Development Researcher specializing in researching best practices, frameworks, and technologies for website development.
 

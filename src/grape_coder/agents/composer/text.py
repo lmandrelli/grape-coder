@@ -18,9 +18,9 @@ def create_text_agent(work_path: str) -> Agent:
     # Set work_path for tools
     set_work_path(work_path)
 
-    # Get model using the simplified config manager
+    # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model("text_generator")
+    model = config_manager.get_model(agent_identifier="text_generator")
 
     # Create agent with text generation tools
     system_prompt = """You are a professional copywriter and content specialist.
