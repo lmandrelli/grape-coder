@@ -8,6 +8,7 @@ from grape_coder.tools.work_path import (
     list_files,
     read_file,
     set_work_path,
+    get_agent_tasks,
 )
 
 
@@ -73,6 +74,7 @@ Always output clean, well-documented code."""
             edit_file,
             grep_files,
             glob_files,
+            get_agent_tasks,
         ],
         system_prompt=system_prompt,
         name="class_generator",

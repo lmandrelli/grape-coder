@@ -10,6 +10,7 @@ from grape_coder.tools.work_path import (
     list_files,
     read_file,
     set_work_path,
+    get_agent_tasks,
 )
 
 from ..config import get_config_manager, ProviderFactory
@@ -67,6 +68,7 @@ Always be helpful and provide clear explanations of what you're doing."""
             grep_files,
             glob_files,
             fetch_url,
+            get_agent_tasks,
         ],
         system_prompt=system_prompt,
         name="Code Agent",
