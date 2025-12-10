@@ -2,6 +2,7 @@ from strands import Agent
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_tool_tracker
 from grape_coder.tools.work_path import (
     list_files,
     read_file,
@@ -44,4 +45,5 @@ Format your output as a numbered list of specific, actionable todo items that th
         system_prompt=system_prompt,
         name=AgentIdentifier.TODO,
         description=get_agent_description(AgentIdentifier.TODO),
+        hooks=[get_tool_tracker(AgentIdentifier.TODO)],
     )
