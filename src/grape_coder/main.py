@@ -11,9 +11,23 @@ from grape_coder.agents.todo import create_todo_generator_agent
 from .agents.composer import build_composer
 from .agents.planner import build_planner
 from .config import run_config_setup
+from .config.manager import get_config_manager
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
+
+
+def validate_config():
+    """Validate configuration and provide detailed error messages."""
+    config_manager = get_config_manager()
+    try:
+        return config_manager.validate_config(panic=True)
+    except Exception as e:
+        console.print(f"[red]Configuration validation failed: {str(e)}[/red]")
+        console.print(
+            "[yellow]Run 'grape-coder config' to fix your configuration.[/yellow]"
+        )
+        return False
 
 
 def header():
@@ -50,6 +64,10 @@ def code(
     ),
 ):
     """Start an interactive code session with file system tools."""
+
+    # Validate configuration first
+    if not validate_config():
+        raise typer.Exit(1)
 
     # Resolve and validate the path
     work_path = Path(path).resolve()
