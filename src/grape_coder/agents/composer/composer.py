@@ -8,6 +8,7 @@ from .generate_class import create_class_agent
 from .orchestrator import create_orchestrator_agent
 from .text import create_text_agent
 
+from grape_coder.agents.identifiers import AgentIdentifier
 
 def all_parallel_agents_complete(required_nodes: list[str]):
     """Factory function to create AND condition for multiple dependencies.
@@ -50,40 +51,40 @@ def build_composer(work_path: str):
     code_agent = create_code_agent(work_path)
 
     # Create task filtering nodes
-    class_filter = TaskFilteringNode(agent_xml_tag="class_agent")
-    text_filter = TaskFilteringNode(agent_xml_tag="text_agent")
-    code_filter = TaskFilteringNode(agent_xml_tag="code_agent")
+    class_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.GENERATE_CLASS)
+    text_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.TEXT)
+    code_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.CODE)
 
     # Build the graph
     builder = GraphBuilder()
 
     # Add nodes
-    builder.add_node(orchestrator, "orchestrator")
+    builder.add_node(orchestrator, AgentIdentifier.ORCHESTRATOR)
     builder.add_node(class_filter, "filter_class_task")
     builder.add_node(text_filter, "filter_text_task")
-    builder.add_node(class_agent, "class_agent")
-    builder.add_node(text_agent, "text_agent")
+    builder.add_node(class_agent, AgentIdentifier.GENERATE_CLASS)
+    builder.add_node(text_agent, AgentIdentifier.TEXT)
     builder.add_node(code_filter, "filter_code_task")
-    builder.add_node(code_agent, "code_agent")
+    builder.add_node(code_agent, AgentIdentifier.CODE)
 
     # Add edges: orchestrator -> task filters
-    builder.add_edge("orchestrator", "filter_class_task")
-    builder.add_edge("orchestrator", "filter_text_task")
+    builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_class_task")
+    builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_text_task")
 
     # Add edges: task filters -> agents
-    builder.add_edge("filter_class_task", "class_agent")
-    builder.add_edge("filter_text_task", "text_agent")
+    builder.add_edge("filter_class_task", AgentIdentifier.GENERATE_CLASS)
+    builder.add_edge("filter_text_task", AgentIdentifier.TEXT)
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
-    parallel_agents = ["class_agent", "text_agent", "filter_code_task"]
+    parallel_agents = [AgentIdentifier.GENERATE_CLASS, AgentIdentifier.TEXT, "filter_code_task"]
     condition = all_parallel_agents_complete(parallel_agents)
 
-    builder.add_edge("class_agent", "code_agent", condition=condition)
-    builder.add_edge("text_agent", "code_agent", condition=condition)
-    builder.add_edge("filter_code_task", "code_agent", condition=condition)
+    builder.add_edge(AgentIdentifier.GENERATE_CLASS, AgentIdentifier.CODE, condition=condition)
+    builder.add_edge(AgentIdentifier.TEXT, AgentIdentifier.CODE, condition=condition)
+    builder.add_edge("filter_code_task", AgentIdentifier.CODE, condition=condition)
 
     # Set entry point
-    builder.set_entry_point("orchestrator")
+    builder.set_entry_point(AgentIdentifier.ORCHESTRATOR)
 
     # Configure execution limits
     builder.set_execution_timeout(600)  # 10 minutes max
