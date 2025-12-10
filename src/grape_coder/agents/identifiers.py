@@ -18,15 +18,15 @@ class AgentIdentifier(str, Enum):
     RESEARCHER = "researcher"
 
     # Composer agents
-    GENERATE_CLASS = "generate_class"
-    TEXT = "text"
+    GENERATE_CLASS = "class_generator"
+    TEXT = "text_generator"
     ORCHESTRATOR = "orchestrator"
 
     # Code agent
-    CODE = "code"
+    CODE = "code_agent"
 
     # Todo agent
-    TODO = "todo"
+    TODO = "todo_generator"
 
     def __str__(self) -> str:
         return self.value
