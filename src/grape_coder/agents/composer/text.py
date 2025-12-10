@@ -1,11 +1,9 @@
 import os
 
 from strands import Agent, tool
-from strands.multiagent.base import MultiAgentBase
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.nodes.taskfiltering import TaskFilteringNode
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -16,7 +14,7 @@ from grape_coder.tools.work_path import (
 )
 
 
-def create_text_agent(work_path: str) -> MultiAgentBase:
+def create_text_agent(work_path: str) -> Agent:
     """Create an agent for generating text content for web pages"""
 
     # Set work_path for tools
@@ -83,7 +81,7 @@ WORKFLOW:
 Always match the brand voice and target audience specified in your tasks.
 """
 
-    agent =  Agent(
+    return Agent(
         model=model,
         tools=[
             list_files_contents,
@@ -93,10 +91,9 @@ Always match the brand voice and target audience specified in your tasks.
             glob_files_contents,
         ],
         system_prompt=system_prompt,
-        name="text_generator",
-        description="AI assistant for generating web page text content",
+        name=AgentIdentifier.TEXT,
+        description=get_agent_description(AgentIdentifier.TEXT),
     )
-    return TaskFilteringNode(agent=agent, agent_xml_tag="text_agent")
 
 
 @tool

@@ -11,9 +11,54 @@ from grape_coder.agents.todo import create_todo_generator_agent
 from .agents.composer import build_composer
 from .agents.planner import build_planner
 from .config import run_config_setup
+from .config.manager import get_config_manager
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
+
+
+def validate_config(panic: bool = True):
+    """Validate configuration and provide detailed error messages.
+
+    Args:
+        panic: If True, raise exceptions on invalid config (for non-config commands).
+               If False, return validation result without panicking (for config command).
+    """
+    config_manager = get_config_manager()
+
+    # Try non-panicking mode first to get detailed errors
+    validation_result = config_manager.validate_config(panic=False)
+
+    if isinstance(validation_result, dict) and validation_result:
+        # Display detailed validation errors
+        config_manager.display_validation_errors(validation_result)
+
+        if panic:
+            # For non-config commands, fallback to panicking mode
+            try:
+                return config_manager.validate_config(panic=True)
+            except Exception as e:
+                console.print(f"[red]Configuration validation failed: {str(e)}[/red]")
+                console.print(
+                    "[yellow]Run 'grape-coder config' to fix your configuration.[/yellow]"
+                )
+                return False
+        else:
+            # For config command, just return False without panicking
+            return False
+    elif isinstance(validation_result, bool):
+        return validation_result
+    else:
+        # Fallback to panicking mode if something unexpected happens
+        try:
+            return config_manager.validate_config(panic=panic)
+        except Exception as e:
+            console.print(f"[red]Configuration validation failed: {str(e)}[/red]")
+            if not panic:
+                console.print(
+                    "[yellow]Run 'grape-coder config' to fix your configuration.[/yellow]"
+                )
+            return False
 
 
 def header():
@@ -40,6 +85,12 @@ def version_callback(value: bool):
 @app.command()
 def config():
     """Interactive configuration setup for providers and agents."""
+    # Display validation errors first without panicking
+    is_valid = validate_config(panic=False)
+
+    if is_valid:
+        console.print("[green]Configuration is valid![/green]\n")
+
     run_config_setup()
 
 
@@ -50,6 +101,10 @@ def code(
     ),
 ):
     """Start an interactive code session with file system tools."""
+
+    # Validate configuration first with panic mode
+    if not validate_config(panic=True):
+        raise typer.Exit(1)
 
     # Resolve and validate the path
     work_path = Path(path).resolve()

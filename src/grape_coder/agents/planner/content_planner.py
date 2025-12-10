@@ -6,7 +6,7 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 
 
@@ -45,6 +45,6 @@ Your output should be comprehensive and ready for todo generation."""
         model=model,
         tools=[list_files, read_file],
         system_prompt=system_prompt,
-        name="content_planner",
-        description="Plans content structure and organization for websites",
+        name=AgentIdentifier.CONTENT_PLANNER,
+        description=get_agent_description(AgentIdentifier.CONTENT_PLANNER),
     )

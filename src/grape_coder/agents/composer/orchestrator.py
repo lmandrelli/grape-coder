@@ -1,10 +1,10 @@
 from strands import Agent
-from strands.agent.agent_result import AgentResult
+from strands.agent import AgentResult
 from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 
 
@@ -45,7 +45,12 @@ Output format example:
 
 Be thorough and break down the project into specific, actionable tasks for each agent."""
 
-    agent = Agent(model=model, system_prompt=system_prompt)
+    agent = Agent(
+        model=model,
+        system_prompt=system_prompt,
+        name=AgentIdentifier.ORCHESTRATOR,
+        description=get_agent_description(AgentIdentifier.ORCHESTRATOR)
+    )
 
     return XMLValidatorNode(agent=agent)
 
