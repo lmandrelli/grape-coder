@@ -5,6 +5,7 @@ from strands.multiagent.graph import GraphState
 from .generate_class import create_class_agent
 from .orchestrator import create_orchestrator_agent
 from .text import create_text_agent
+from grape_coder.nodes.taskfiltering import TaskFilteringNode
 
 
 def all_parallel_agents_complete(required_nodes: list[str]):
@@ -30,10 +31,11 @@ def build_composer(work_path: str):
 
     Graph structure:
         orchestrator
-            ├── class_agent  ─┬──> code_agent
-            └── text_agent   ─┘
+            ├── filter_class_task -> class_agent  ─┬──> code_agent
+            └── filter_text_task  -> text_agent   ─┘
 
     Orchestrator analyzes the task and creates a distribution plan.
+    Task filtering nodes extract specific tasks for each agent.
     Parallel agents (class, text) work simultaneously.
     Code agent assembles everything into the final HTML output.
     """
@@ -46,18 +48,28 @@ def build_composer(work_path: str):
     text_agent = create_text_agent(work_path)
     code_agent = create_code_agent(work_path)
 
+    # Create task filtering nodes
+    class_filter = TaskFilteringNode(agent_xml_tag="class_agent")
+    text_filter = TaskFilteringNode(agent_xml_tag="text_agent")
+
     # Build the graph
     builder = GraphBuilder()
 
     # Add nodes
     builder.add_node(orchestrator, "orchestrator")
+    builder.add_node(class_filter, "filter_class_task")
+    builder.add_node(text_filter, "filter_text_task")
     builder.add_node(class_agent, "class_agent")
     builder.add_node(text_agent, "text_agent")
     builder.add_node(code_agent, "code_agent")
 
-    # Add edges: orchestrator -> parallel agents
-    builder.add_edge("orchestrator", "class_agent")
-    builder.add_edge("orchestrator", "text_agent")
+    # Add edges: orchestrator -> task filters
+    builder.add_edge("orchestrator", "filter_class_task")
+    builder.add_edge("orchestrator", "filter_text_task")
+
+    # Add edges: task filters -> agents
+    builder.add_edge("filter_class_task", "class_agent")
+    builder.add_edge("filter_text_task", "text_agent")
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
     parallel_agents = ["class_agent", "text_agent"]
