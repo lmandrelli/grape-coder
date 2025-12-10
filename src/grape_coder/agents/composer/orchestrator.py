@@ -45,15 +45,15 @@ AVAILABLE SPECIALIZED AGENTS:
    - Takes CSS and content files and creates the final HTML structure
    - Integrates all components into a cohesive, functional website
    - Outputs: .html files
-   - This agent works AFTER class_agent and text_agent complete their work
+   - This agent works AFTER class_agent and {AgentIdentifier.TEXT} complete their work
 
 TASK DISTRIBUTION PROCESS:
 1. You receive a TODO LIST with tasks to accomplish
 2. Analyze each task in the list
 3. Determine which agent should handle each task:
-   - If it's about styles, CSS, layouts, colors, design → assign to class_agent
-   - If it's about writing text, content, copy, headlines → assign to text_agent
-   - If it's about HTML structure, integration, combining elements → assign to code_agent
+   - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
+   - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
+   - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
 4. You may also break down complex tasks into multiple sub-tasks if needed
 5. Ensure all tasks from the TODO LIST are distributed
 6. Group related tasks together under the same agent
