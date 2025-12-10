@@ -2,7 +2,7 @@ import os
 
 from strands import Agent, tool
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.tools.work_path import (
     edit_file,
@@ -59,8 +59,8 @@ Use tools to create all MarkDown files in . folder.
             glob_files_contents,
         ],
         system_prompt=system_prompt,
-        name="text_generator",
-        description="AI assistant for generating web page text content",
+        name=AgentIdentifier.TEXT,
+        description=get_agent_description(AgentIdentifier.TEXT),
     )
 
 

@@ -7,7 +7,7 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 
 
@@ -45,6 +45,6 @@ Use the available tools to gather information and provide comprehensive research
         model=model,
         tools=[fetch_url, list_files, read_file],
         system_prompt=system_prompt,
-        name="researcher",
-        description="Researches best practices, frameworks, and technologies for website development",
+        name=AgentIdentifier.RESEARCHER,
+        description=get_agent_description(AgentIdentifier.RESEARCHER),
     )

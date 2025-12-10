@@ -8,7 +8,7 @@ from prompt_toolkit.validation import Validator
 from grape_coder.config.models import ProviderConfig, AgentConfig, GrapeCoderConfig, ProviderType
 from grape_coder.config.manager import get_config_manager, ConfigManager
 from grape_coder.config.litellm_integration import ProviderFactory
-from grape_coder.agents.identifiers import get_agent_choices
+from grape_coder.agents.identifiers import get_agent_values
 
 console = Console()
 
@@ -22,7 +22,6 @@ def run_config_setup() -> None:
     # Load existing config or create new one
     if config_manager.config_exists():
         config = config_manager.config or GrapeCoderConfig()
-        console.print("[green]Configuration loaded successfully.[/green]")
     else:
         config = GrapeCoderConfig()
         console.print(
@@ -165,7 +164,7 @@ def map_models_to_agents(config: GrapeCoderConfig) -> None:
         return
 
     # Define available agents directly
-    available_agents = get_agent_choices()
+    available_agents = get_agent_values()
 
     # Show available agents
     console.print("\nAvailable agents:")

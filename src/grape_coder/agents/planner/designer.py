@@ -6,7 +6,7 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 
 
@@ -45,6 +45,6 @@ Provide detailed design specifications that can be implemented by developers."""
         model=model,
         tools=[list_files, read_file],
         system_prompt=system_prompt,
-        name="designer",
-        description="Creates UI/UX design specifications and layout plans for websites",
+        name=AgentIdentifier.DESIGNER,
+        description=get_agent_description(AgentIdentifier.DESIGNER),
     )
