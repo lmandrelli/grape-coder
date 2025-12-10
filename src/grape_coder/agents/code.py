@@ -1,6 +1,8 @@
+import os
+
 from typing import cast
 
-from strands import Agent
+from strands import Agent, tool
 from strands.agent import AgentResult
 from strands.models.model import Model
 from strands.multiagent import MultiAgentResult
@@ -69,7 +71,7 @@ Your role is to:
         tools=[
             list_files,
             read_file,
-            edit_file,
+            edit_file_code,
             grep_files,
             glob_files,
             fetch_url,
@@ -80,6 +82,20 @@ Your role is to:
     )
 
     return WorkspaceExplorerNode(agent=agent, work_path=work_path)
+
+@tool
+def edit_file_code(path: str, content: str) -> str:
+    """
+    Edit or create a file with content.
+    Files MUST have an extension (e.g., .html, .css, .js, .mfd).
+    To create files in folders, use 'folder/file.html' format.
+    """
+    
+    # Check if the path points to a directory
+    if os.path.isdir(path):
+        return f"Error: '{path}' is a directory, not a file. Please specify a file path with an extension. To create a file in a folder, use 'folder/file.html' format."
+    
+    return edit_file(path, content)
 
 
 class WorkspaceExplorerNode(MultiAgentBase):

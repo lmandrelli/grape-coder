@@ -108,10 +108,12 @@ def read_file_css(path: str) -> str:
 @tool
 def edit_file_css(path: str, content: str) -> str:
     """Edit or create a CSS file. Only .css files are allowed."""
-    # Validate that the file has .css extension
+    
     if not path.endswith('.css'):
         return f"ERROR: You are only allowed to create and edit CSS (.css) files. The path '{path}' does not have a .css extension. Please use a .css file instead."
-    
+    if '/' in path or '\\' in path:
+        return f"ERROR: You cannot create files in subdirectories. The path '{path}' contains directory separators. Please use only a filename like 'main.css', not 'style/main.css'. You are already placed in the correct working directory."
+
     path = os.path.join("style", path)
     return edit_file(path, content)
 

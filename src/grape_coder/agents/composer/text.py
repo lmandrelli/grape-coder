@@ -111,8 +111,11 @@ def read_file_contents(path: str) -> str:
 @tool
 def edit_file_contents(path: str, content: str) -> str:
     """Edit or create a Markdown file. Only .md files are allowed."""
+    
     if not path.endswith('.md'):
         return f"ERROR: You are only allowed to create and edit Markdown (.md) files. The path '{path}' does not have a .md extension. Please use a .md file instead."
+    if '/' in path or '\\' in path:
+        return f"ERROR: You cannot create files in subdirectories. The path '{path}' contains directory separators. Please use only a filename like 'header.md', not 'content/header.md'. You are already placed in the correct working directory."
     
     path = os.path.join("contents", path)
     return edit_file(path, content)
