@@ -2,10 +2,11 @@ from strands.multiagent import GraphBuilder
 from strands.multiagent.base import Status
 from strands.multiagent.graph import GraphState
 
+from grape_coder.nodes.taskfiltering import TaskFilteringNode
+
 from .generate_class import create_class_agent
 from .orchestrator import create_orchestrator_agent
 from .text import create_text_agent
-from grape_coder.nodes.taskfiltering import TaskFilteringNode
 
 
 def all_parallel_agents_complete(required_nodes: list[str]):
@@ -51,6 +52,7 @@ def build_composer(work_path: str):
     # Create task filtering nodes
     class_filter = TaskFilteringNode(agent_xml_tag="class_agent")
     text_filter = TaskFilteringNode(agent_xml_tag="text_agent")
+    code_filter = TaskFilteringNode(agent_xml_tag="code_agent")
 
     # Build the graph
     builder = GraphBuilder()
@@ -61,6 +63,7 @@ def build_composer(work_path: str):
     builder.add_node(text_filter, "filter_text_task")
     builder.add_node(class_agent, "class_agent")
     builder.add_node(text_agent, "text_agent")
+    builder.add_node(code_filter, "filter_code_task")
     builder.add_node(code_agent, "code_agent")
 
     # Add edges: orchestrator -> task filters
@@ -72,11 +75,12 @@ def build_composer(work_path: str):
     builder.add_edge("filter_text_task", "text_agent")
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
-    parallel_agents = ["class_agent", "text_agent"]
+    parallel_agents = ["class_agent", "text_agent", "filter_code_task"]
     condition = all_parallel_agents_complete(parallel_agents)
 
     builder.add_edge("class_agent", "code_agent", condition=condition)
     builder.add_edge("text_agent", "code_agent", condition=condition)
+    builder.add_edge("filter_code_task", "code_agent", condition=condition)
 
     # Set entry point
     builder.set_entry_point("orchestrator")
