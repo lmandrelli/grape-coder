@@ -16,7 +16,7 @@ def create_orchestrator_agent() -> MultiAgentBase:
     model = config_manager.get_model(AgentIdentifier.ORCHESTRATOR)
 
     # Create agent with task distribution tools
-    system_prompt = """You are the orchestrator and entry point of a multi-agent system for website creation.
+    system_prompt = f"""You are the orchestrator and entry point of a multi-agent system for website creation.
 
 CONTEXT:
 You are the first agent in a collaborative multi-agent workflow designed to create complete, professional websites.
@@ -29,31 +29,31 @@ Your job is to understand each task and route it to the agent best suited to acc
 You must ensure every task from the TODO LIST is assigned to an agent.
 
 AVAILABLE SPECIALIZED AGENTS:
-1. class_agent: CSS Specialist
+1. {AgentIdentifier.GENERATE_CLASS}: CSS Specialist
    - Creates reusable CSS classes and styles
    - Handles all styling, layouts, colors, typography, responsive design
    - Outputs: .css files only
    - Examples: button styles, navigation bars, card components, grid layouts, color schemes
 
-2. text_agent: Content Writer
+2. {AgentIdentifier.TEXT}: Content Writer
    - Generates all text content for the website
    - Creates web-optimized copy (short paragraphs, scannable, action-oriented)
    - Outputs: .md (Markdown) files only
    - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
 
-3. coder_agent: HTML Integrator
+3. {AgentIdentifier.CODE}: HTML Integrator
    - Takes CSS and content files and creates the final HTML structure
    - Integrates all components into a cohesive, functional website
    - Outputs: .html files
-   - This agent works AFTER class_agent and text_agent complete their work
+   - This agent works AFTER class_agent and {AgentIdentifier.TEXT} complete their work
 
 TASK DISTRIBUTION PROCESS:
 1. You receive a TODO LIST with tasks to accomplish
 2. Analyze each task in the list
 3. Determine which agent should handle each task:
-   - If it's about styles, CSS, layouts, colors, design → assign to class_agent
-   - If it's about writing text, content, copy, headlines → assign to text_agent
-   - If it's about HTML structure, integration, combining elements → assign to coder_agent
+   - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
+   - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
+   - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
 4. You may also break down complex tasks into multiple sub-tasks if needed
 5. Ensure all tasks from the TODO LIST are distributed
 6. Group related tasks together under the same agent
@@ -62,19 +62,19 @@ OUTPUT FORMAT (REQUIRED XML):
 You MUST output your task distribution in this exact XML format:
 
 <task_distribution>
-    <class_agent>
+    <{AgentIdentifier.GENERATE_CLASS}>
         <task>Specific CSS task description</task>
         <task>Another CSS task description</task>
         ...
-    </class_agent>
-    <text_agent>
+    </{AgentIdentifier.GENERATE_CLASS}>
+    <{AgentIdentifier.TEXT}>
         <task>Specific content writing task</task>
         <task>Another content writing task</task>
         ...
-    </text_agent>
-    <coder_agent>
+    </{AgentIdentifier.TEXT}>
+    <{AgentIdentifier.CODE}>
         <task>HTML integration task (usually one main task to combine everything)</task>
-    </coder_agent>
+    </{AgentIdentifier.CODE}>
 </task_distribution>
 
 EXAMPLE:
@@ -88,18 +88,18 @@ If you receive this TODO LIST:
 
 You would distribute:
 <task_distribution>
-    <class_agent>
+    <{AgentIdentifier.GENERATE_CLASS}>
         <task>Design a responsive navigation bar with modern styling</task>
         <task>Style the project cards with hover effects and proper spacing</task>
         <task>Create overall responsive layout and color scheme for portfolio</task>
-    </class_agent>
-    <text_agent>
+    </{AgentIdentifier.GENERATE_CLASS}>
+    <{AgentIdentifier.TEXT}>
         <task>Write an engaging hero section with headline and introduction</task>
         <task>Create about me content describing background and skills</task>
-    </text_agent>
-    <coder_agent>
+    </{AgentIdentifier.TEXT}>
+    <{AgentIdentifier.CODE}>
         <task>Integrate navigation, hero section, project cards, and about section into a complete HTML portfolio page</task>
-    </coder_agent>
+    </{AgentIdentifier.CODE}>
 </task_distribution>
 
 Be thorough, specific, and ensure every task from the TODO LIST is assigned to an agent."""
@@ -269,7 +269,7 @@ def validate_distribution(xml_distribution: str) -> str:
         if root.tag != "task_distribution":
             return "Error: Root element must be 'task_distribution'"
 
-        required_agents = ["class_agent", "text_agent", "coder_agent"]
+        required_agents = [AgentIdentifier.GENERATE_CLASS, AgentIdentifier.TEXT, AgentIdentifier.CODE]
         found_agents = [child.tag for child in root]
 
         missing = [agent for agent in required_agents if agent not in found_agents]

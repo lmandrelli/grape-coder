@@ -32,7 +32,7 @@ def create_code_agent(work_path: str) -> Agent:
     model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
 
     # Create agent with file system tools
-    system_prompt = """You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
+    system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
 
 CONTEXT:
 You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
@@ -41,7 +41,7 @@ You are working in a multi-agent pipeline designed to generate complete websites
 - Additional agents may have created other web resources (images, data files, etc.)
 
 WORKFLOW:
-You will receive a list of specific tasks to accomplish from an orchestrator agent.
+You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
 Your role is to:
 1. First, explore the working directory to understand what has been prepared by previous agents
 2. Read and understand the generated files (CSS, text content, etc.)
