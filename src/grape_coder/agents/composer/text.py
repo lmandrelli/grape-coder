@@ -5,7 +5,7 @@ from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.config import get_config_manager
-from grape_coder.tools.agents import TaskFilteringNode
+from grape_coder.nodes.taskfiltering import TaskFilteringNode
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
