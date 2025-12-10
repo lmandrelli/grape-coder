@@ -49,7 +49,7 @@ Be thorough and break down the project into specific, actionable tasks for each 
         model=model,
         system_prompt=system_prompt,
         name=AgentIdentifier.ORCHESTRATOR,
-        description=get_agent_description(AgentIdentifier.ORCHESTRATOR)
+        description=get_agent_description(AgentIdentifier.ORCHESTRATOR),
     )
 
     return XMLValidatorNode(agent=agent)
@@ -210,7 +210,7 @@ def validate_distribution(xml_distribution: str) -> str:
         if root.tag != "task_distribution":
             return "Error: Root element must be 'task_distribution'"
 
-        required_agents = ["class_agent", "text_agent", "coder_agent"]
+        required_agents = ["class_agent", "text_agent", "code_agent"]
         found_agents = [child.tag for child in root]
 
         missing = [agent for agent in required_agents if agent not in found_agents]

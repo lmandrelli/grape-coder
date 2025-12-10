@@ -69,6 +69,7 @@ def build_composer(work_path: str):
     # Add edges: orchestrator -> task filters
     builder.add_edge("orchestrator", "filter_class_task")
     builder.add_edge("orchestrator", "filter_text_task")
+    builder.add_edge("orchestrator", "filter_code_task")
 
     # Add edges: task filters -> agents
     builder.add_edge("filter_class_task", "class_agent")
