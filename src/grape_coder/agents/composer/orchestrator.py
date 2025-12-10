@@ -1,3 +1,5 @@
+from typing import Any
+
 from strands import Agent
 from strands.agent import AgentResult
 from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
@@ -6,6 +8,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_tool_tracker
 
 
 def create_orchestrator_agent() -> MultiAgentBase:
@@ -109,6 +112,8 @@ def create_orchestrator_agent() -> MultiAgentBase:
         system_prompt=system_prompt,
         name=AgentIdentifier.ORCHESTRATOR,
         description=get_agent_description(AgentIdentifier.ORCHESTRATOR),
+        hooks=[get_tool_tracker()],
+        callback_handler=None,
     )
 
     return XMLValidatorNode(agent=agent)
@@ -122,7 +127,12 @@ class XMLValidatorNode(MultiAgentBase):
         self.agent = agent
         self.max_retries = max_retries
 
-    async def invoke_async(self, task, invocation_state=None, **kwargs):
+    async def invoke_async(
+        self,
+        task: str | list[ContentBlock],
+        invocation_state: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> MultiAgentResult:
         """Execute XML validation with retry logic"""
         initial_prompt = task if isinstance(task, str) else str(task)
         current_prompt = initial_prompt
@@ -229,7 +239,24 @@ Please fix the XML and provide a corrected version. Ensure the XML is well-forme
                     },
                 )
 
-    def _extract_xml(self, content):
+        # Fallback return (should not be reached due to loop logic)
+        agent_result = AgentResult(
+            stop_reason="guardrail_intervened",
+            state=Status.FAILED,
+            metrics=EventLoopMetrics(),
+            message=Message(
+                role="assistant",
+                content=[ContentBlock(text=initial_prompt)],
+            ),
+        )
+        return MultiAgentResult(
+            status=Status.FAILED,
+            results={
+                "xml_validator": NodeResult(result=agent_result, status=Status.FAILED)
+            },
+        )
+
+    def _extract_xml(self, content: str) -> str:
         """Extract XML content from model response"""
         import re
 
