@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from .litellm_integration import create_litellm_model
 from .models import GrapeCoderConfig
+from ..agents.identifiers import get_agent_values
 
 # Global config manager instance
 _config_manager = None
@@ -52,7 +53,30 @@ class ConfigManager:
             with open(self._config_file, "r", encoding="utf-8") as f:
                 config_data = json.load(f)
 
-            return GrapeCoderConfig(**config_data)
+            config = GrapeCoderConfig(**config_data)
+
+            # Validate that all required agents are present and no additional agents exist
+            required_agents: set[str] = set(get_agent_values())
+            configured_agents: set[str] = (
+                set(config.agents.keys()) if config.agents else set()
+            )
+
+            missing_agents: set[str] = required_agents - configured_agents
+            additional_agents: set[str] = configured_agents - required_agents
+
+            if missing_agents:
+                raise ValueError(
+                    f"Missing required agents: {sorted(missing_agents)}. "
+                    f"Required agents: {sorted(required_agents)}"
+                )
+
+            if additional_agents:
+                raise ValueError(
+                    f"Additional undefined agents found: {sorted(additional_agents)}. "
+                    f"Only these agents are allowed: {sorted(required_agents)}"
+                )
+
+            return config
 
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in configuration file: {e}")

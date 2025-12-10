@@ -1,9 +1,9 @@
 from .code import create_code_agent
-from .identifiers import AgentIdentifier, get_agent_display_list, get_agent_choices
+from .identifiers import AgentIdentifier, get_agent_display_list, get_agent_values
 
 __all__ = [
     "create_code_agent",
     "AgentIdentifier",
     "get_agent_display_list",
-    "get_agent_choices",
+    "get_agent_values",
 ]
