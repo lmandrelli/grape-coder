@@ -3,10 +3,10 @@ from typing import cast
 from strands import Agent
 from strands.models.model import Model
 
+from grape_coder.tools.agents import get_agent_tasks
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
-    get_agent_tasks,
     glob_files,
     grep_files,
     list_files,
@@ -40,7 +40,8 @@ Available tools:
 - glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL
 
-Always be helpful and provide clear explanations of what you're doing."""
+Before doing anything list files to see what have been done.
+"""
 
     agent = Agent(
         model=model,

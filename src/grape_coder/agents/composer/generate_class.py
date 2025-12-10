@@ -1,6 +1,9 @@
-from strands import Agent
+import os
+
+from strands import Agent, tool
 
 from grape_coder.config import get_config_manager
+from grape_coder.tools.agents import get_agent_tasks
 from grape_coder.agents.identifiers import AgentIdentifier
 
 from grape_coder.tools.work_path import (
@@ -10,7 +13,6 @@ from grape_coder.tools.work_path import (
     list_files,
     read_file,
     set_work_path,
-    get_agent_tasks,
 )
 
 
@@ -25,8 +27,8 @@ def create_class_agent(work_path: str) -> Agent:
     model = config_manager.get_model(AgentIdentifier.GENERATE_CLASS)
 
     # Create agent with class creation tools
-    system_prompt = """You are a CSS class and HTML component specialist.
-Your role is to create reusable, well-structured CSS classes and HTML component templates.
+    system_prompt = """You are a CSS class specialist.
+Your role is to create reusable, well-structured CSS classes.
 
 Available tools:
 - list_files: List files and directories in a path
@@ -40,21 +42,53 @@ Best practices:
 - Create mobile-first responsive classes
 - Keep classes single-purpose and composable
 - Document each class with its purpose and usage
-- Organize files logically (e.g., components/, utilities/, layouts/)
 
-Always output clean, well-documented code."""
+Always output clean, well-documented code.
+
+Use tools to create all css files in . folder.
+"""
 
     return Agent(
         model=model,
         tools=[
-            list_files,
-            read_file,
-            edit_file,
-            grep_files,
-            glob_files,
+            list_files_css,
+            read_file_css,
+            edit_file_css,
+            grep_files_css,
+            glob_files_css,
             get_agent_tasks,
         ],
         system_prompt=system_prompt,
         name="class_generator",
         description="AI assistant for creating reusable CSS classes and components",
     )
+
+
+@tool
+def list_files_css(path: str = ".", recursive: bool = False) -> str:
+    path = os.path.join("style", path)
+    return list_files(path, recursive)
+
+
+@tool
+def read_file_css(path: str) -> str:
+    path = os.path.join("style", path)
+    return read_file(path)
+
+
+@tool
+def edit_file_css(path: str, content: str) -> str:
+    path = os.path.join("style", path)
+    return edit_file(path, content)
+
+
+@tool
+def grep_files_css(pattern: str, path: str = ".", file_pattern: str = "*") -> str:
+    path = os.path.join("style", path)
+    return grep_files(pattern, path, file_pattern)
+
+
+@tool
+def glob_files_css(pattern: str, path: str = ".") -> str:
+    path = os.path.join("style", path)
+    return glob_files(pattern, path)

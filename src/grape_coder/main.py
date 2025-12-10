@@ -83,7 +83,7 @@ def code(
 
                 console.print("[bold green]Agent:[/bold green]")
 
-                console.print("[green]📄 Planner...[/green]")
+                console.print("\n[green]📄 Planner...[/green]")
 
                 try:
                     planner = build_planner(str(work_path))
@@ -97,7 +97,7 @@ def code(
                         if hasattr(node_result, "result"):
                             complete_plan += f"\n=== {node_name.upper()} OUTPUT ===\n{node_result.result}\n"
 
-                    console.print("[green]📋 Todo[/green]")
+                    console.print("\n[green]📋 Todo[/green]")
 
                     todo_generator = create_todo_generator_agent(str(work_path))
 
@@ -115,7 +115,7 @@ def code(
                     # Fallback to direct code execution
                     graph_input = user_input
 
-                console.print("[green]📚 Composer[/green]")
+                console.print("\n[green]📚 Composer[/green]")
 
                 graph = build_composer(str(work_path))
                 _ = graph(graph_input)
