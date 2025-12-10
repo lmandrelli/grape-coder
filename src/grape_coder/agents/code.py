@@ -14,8 +14,8 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from ..config import get_config_manager
-from .identifiers import AgentIdentifier
+from grape_coder.config import get_config_manager
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 
 
 def create_code_agent(work_path: str) -> Agent:
@@ -55,8 +55,8 @@ Before doing anything list files to see what have been done.
             get_agent_tasks,
         ],
         system_prompt=system_prompt,
-        name="Code Agent",
-        description="AI assistant for code and file operations",
+        name=AgentIdentifier.CODE,
+        description=get_agent_description(AgentIdentifier.CODE),
     )
 
     return agent
