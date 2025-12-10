@@ -1,9 +1,10 @@
 import os
 
 from strands import Agent, tool
+from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.config import get_config_manager
-from grape_coder.tools.agents import get_agent_tasks
+from grape_coder.nodes.taskfiltering import TaskFilteringNode
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 
 from grape_coder.tools.work_path import (
@@ -16,7 +17,7 @@ from grape_coder.tools.work_path import (
 )
 
 
-def create_class_agent(work_path: str) -> Agent:
+def create_class_agent(work_path: str) -> MultiAgentBase:
     """Create an agent for creating reusable CSS classes and HTML components"""
 
     # Set work_path for tools
@@ -47,8 +48,7 @@ Always output clean, well-documented code.
 
 Use tools to create all css files in . folder.
 """
-
-    return Agent(
+    agent =  Agent(
         model=model,
         tools=[
             list_files_css,
@@ -56,12 +56,12 @@ Use tools to create all css files in . folder.
             edit_file_css,
             grep_files_css,
             glob_files_css,
-            get_agent_tasks,
         ],
         system_prompt=system_prompt,
         name=AgentIdentifier.GENERATE_CLASS,
         description=get_agent_description(AgentIdentifier.GENERATE_CLASS),
     )
+    return TaskFilteringNode(agent=agent, agent_xml_tag="class_agent")
 
 
 @tool

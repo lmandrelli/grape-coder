@@ -3,7 +3,6 @@ from typing import cast
 from strands import Agent
 from strands.models.model import Model
 
-from grape_coder.tools.agents import get_agent_tasks
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -52,7 +51,6 @@ Before doing anything list files to see what have been done.
             grep_files,
             glob_files,
             fetch_url,
-            get_agent_tasks,
         ],
         system_prompt=system_prompt,
         name=AgentIdentifier.CODE,
