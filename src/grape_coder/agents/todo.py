@@ -1,5 +1,6 @@
 from strands import Agent
 
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.tools.work_path import (
     list_files,
@@ -14,7 +15,7 @@ def create_todo_generator_agent(work_path: str) -> Agent:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = config_manager.get_model(agent_identifier="todo_generator")
+    model = config_manager.get_model(AgentIdentifier.TODO)
 
     system_prompt = """You are a Todo Generator Agent specializing in creating structured, actionable todo lists from website development plans.
 
@@ -41,6 +42,6 @@ Format your output as a numbered list of specific, actionable todo items that th
         model=model,
         tools=[list_files, read_file],
         system_prompt=system_prompt,
-        name="todo_generator",
-        description="Creates structured todo lists from website development plans",
+        name=AgentIdentifier.TODO,
+        description=get_agent_description(AgentIdentifier.TODO),
     )

@@ -5,7 +5,7 @@ from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.config import get_config_manager
 from grape_coder.nodes.taskfiltering import TaskFilteringNode
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 
 from grape_coder.tools.work_path import (
     edit_file,
@@ -58,8 +58,8 @@ Use tools to create all css files in . folder.
             glob_files_css,
         ],
         system_prompt=system_prompt,
-        name="class_generator",
-        description="AI assistant for creating reusable CSS classes and components",
+        name=AgentIdentifier.GENERATE_CLASS,
+        description=get_agent_description(AgentIdentifier.GENERATE_CLASS),
     )
     return TaskFilteringNode(agent=agent, agent_xml_tag="class_agent")
 

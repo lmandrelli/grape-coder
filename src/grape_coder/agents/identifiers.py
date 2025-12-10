@@ -28,6 +28,9 @@ class AgentIdentifier(str, Enum):
     # Todo agent
     TODO = "todo"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 # Agent descriptions for CLI display
 AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
@@ -53,7 +56,7 @@ def get_agent_description(agent_id: AgentIdentifier) -> str:
     return AGENT_DESCRIPTIONS.get(agent_id, "No description available")
 
 
-def get_agent_choices() -> List[str]:
+def get_agent_values() -> List[str]:
     """Get list of agent choices for CLI selection."""
     return [agent.value for agent in AgentIdentifier]
 
