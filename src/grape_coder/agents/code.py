@@ -32,20 +32,37 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
     model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
 
     # Create agent with file system tools
-    system_prompt = """You are a code assistant with access to file system tools.
-You can list files, read files, edit/create files, search for content, use glob patterns, and fetch web content.
+    system_prompt = """You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
 
-Available tools:
-- list_files: List files and directories in a path
-- read_file: Read contents of one or more files
-- edit_file: Edit or create a file with new content
-- grep_files: Search for patterns in files
-- glob_files: Find files using glob patterns
-- fetch_url: Fetch content from a URL
+    CONTEXT:
+    You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
+    - CSS/styling agents have created style files (.css) with components and design system
+    - Content agents have generated text files (.txt) with copy and content
+    - Additional agents may have created other web resources (images, data files, etc.)
 
-Before doing anything list files to see what have been done.
-Use tools to create all css files in . folder.
-"""
+    WORKFLOW:
+    You will receive a list of specific tasks to accomplish from an orchestrator agent.
+    Your role is to:
+    1. First, explore the working directory to understand what has been prepared by previous agents
+    2. Read and understand the generated files (CSS, text content, etc.)
+    3. Use these prepared resources to complete the tasks you've been assigned
+    4. Integrate all resources into cohesive, production-ready web code
+    5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets
+
+    KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
+    Read them, understand them, and incorporate them into your web development work to fulfill the task list.
+    Your goal is to produce a functional, well-structured website that integrates all the prepared components.
+
+    Available tools:
+    - list_files: List files and directories in a path (automatically called at startup)
+    - read_file: Read contents of one or more files
+    - edit_file: Edit or create a file with new content
+    - grep_files: Search for patterns in files
+    - glob_files: Find files using glob patterns
+    - fetch_url: Fetch content from a URL
+
+    The workspace exploration will be automatically provided to you at the start.
+    """
 
     agent = Agent(
         model=model,
@@ -62,28 +79,70 @@ Use tools to create all css files in . folder.
         description=get_agent_description(AgentIdentifier.CODE),
     )
 
-    return CodeNode(agent=agent)
+    return WorkspaceExplorerNode(agent=agent, work_path=work_path)
 
 
-class CodeNode(MultiAgentBase):
-    def __init__(self, agent):
+class WorkspaceExplorerNode(MultiAgentBase):
+    """Custom node that automatically explores the workspace before processing tasks"""
+
+    def __init__(self, agent: Agent, work_path: str):
         super().__init__()
         self.agent = agent
+        self.work_path = work_path
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
-        # task comes from the previous node (Orchestrator's XML output)
-        task = task if isinstance(task, str) else str(task)
+        """Execute workspace exploration before main task"""
+        try:
+            # First, explore the workspace
+            exploration_result = list_files(path=self.work_path, recursive=True)
 
-        response = await self.agent.invoke_async(task)
+            # Build enhanced prompt with workspace context
+            workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
+{exploration_result}
 
-        agent_result = AgentResult(
-            stop_reason="end_turn",
-            state=Status.COMPLETED,
-            metrics=EventLoopMetrics(),
-            message=Message(role="assistant", content=[ContentBlock(text=response)]),
-        )
+Now proceed with your task:
+{task}"""
 
-        return MultiAgentResult(
-            status=Status.COMPLETED,
-            results={"code": NodeResult(result=agent_result, status=Status.COMPLETED)},
-        )
+            # Execute the main task with workspace context
+            response = await self.agent.invoke_async(workspace_context)
+
+            # Return successful result
+            agent_result = AgentResult(
+                stop_reason="end_turn",
+                state=Status.COMPLETED,
+                metrics=EventLoopMetrics(),
+                message=response.message
+                if hasattr(response, "message")
+                else Message(
+                    role="assistant", content=[ContentBlock(text=str(response))]
+                ),
+            )
+
+            return MultiAgentResult(
+                status=Status.COMPLETED,
+                results={
+                    "workspace_explorer": NodeResult(
+                        result=agent_result, status=Status.COMPLETED
+                    )
+                },
+            )
+
+        except Exception as e:
+            agent_result = AgentResult(
+                stop_reason="guardrail_intervened",
+                state=Status.FAILED,
+                metrics=EventLoopMetrics(),
+                message=Message(
+                    role="assistant",
+                    content=[ContentBlock(text=f"Error: {str(e)}")],
+                ),
+            )
+
+            return MultiAgentResult(
+                status=Status.FAILED,
+                results={
+                    "workspace_explorer": NodeResult(
+                        result=agent_result, status=Status.FAILED
+                    )
+                },
+            )
