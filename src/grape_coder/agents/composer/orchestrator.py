@@ -8,7 +8,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker
+from grape_coder.display import get_tool_tracker, get_conversation_tracker
 
 
 def create_orchestrator_agent() -> MultiAgentBase:
@@ -112,7 +112,7 @@ def create_orchestrator_agent() -> MultiAgentBase:
         system_prompt=system_prompt,
         name=AgentIdentifier.ORCHESTRATOR,
         description=get_agent_description(AgentIdentifier.ORCHESTRATOR),
-        hooks=[get_tool_tracker(AgentIdentifier.ORCHESTRATOR)],
+        hooks=[get_tool_tracker(AgentIdentifier.ORCHESTRATOR), get_conversation_tracker(AgentIdentifier.ORCHESTRATOR)],
         callback_handler=None,
     )
 
