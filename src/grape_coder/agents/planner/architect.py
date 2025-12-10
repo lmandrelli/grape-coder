@@ -8,6 +8,7 @@ from grape_coder.tools.work_path import (
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_tool_tracker
 
 
 def create_architect_agent(work_path: str) -> Agent:
@@ -64,4 +65,5 @@ Provide a detailed architectural plan for a well-organized static website that t
         system_prompt=system_prompt,
         name=AgentIdentifier.ARCHITECT,
         description=get_agent_description(AgentIdentifier.ARCHITECT),
+        hooks=[get_tool_tracker(AgentIdentifier.ARCHITECT)],
     )

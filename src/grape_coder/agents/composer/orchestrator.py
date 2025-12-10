@@ -112,7 +112,7 @@ def create_orchestrator_agent() -> MultiAgentBase:
         system_prompt=system_prompt,
         name=AgentIdentifier.ORCHESTRATOR,
         description=get_agent_description(AgentIdentifier.ORCHESTRATOR),
-        hooks=[get_tool_tracker()],
+        hooks=[get_tool_tracker(AgentIdentifier.ORCHESTRATOR)],
         callback_handler=None,
     )
 
