@@ -241,7 +241,9 @@ class ConfigManager:
 
         # Check for required agents
         required_agents = set(get_agent_values())
-        configured_agents = set(config.agents.keys()) if config.agents else set()
+        configured_agents: set[str] = (
+            set(config.agents.keys()) if config.agents else set()
+        )
 
         missing_agents = required_agents - configured_agents
         additional_agents = configured_agents - required_agents
