@@ -1,5 +1,5 @@
 from strands import Agent
-from strands.agent.agent_result import AgentResult
+from strands.agent import AgentResult
 from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
