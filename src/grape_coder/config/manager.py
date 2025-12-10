@@ -220,76 +220,152 @@ class ConfigManager:
                 f"Failed to create model for agent '{agent_identifier}': {e}"
             )
 
-    def validate_config(self, panic: bool = True) -> bool:
+    def validate_config(self, panic: bool = True) -> bool | dict[str, list[str]]:
         """Validate configuration and provide detailed error messages.
 
         Args:
-            panic: If True, raises exceptions on validation errors. If False, returns False on errors.
+            panic: If True, raises exceptions on validation errors. If False, returns error dict.
 
         Returns:
-            True if configuration is valid, False otherwise (when panic=False)
+            True if configuration is valid (when panic=True)
+            Error dict with categorized validation errors (when panic=False)
 
         Raises:
             ValueError: When configuration is invalid and panic=True
         """
+        errors: dict[str, list[str]] = {
+            "providers": [],
+            "agents": [],
+            "missing": [],
+            "additional": [],
+        }
+
         config = self.config
 
         if config is None:
+            errors["missing"].append("No configuration found")
             if panic:
                 raise ValueError("No configuration found.")
-            return False
+            return errors
 
-        # Check for required agents
+        # Check for at least one provider
+        if not config.providers:
+            errors["missing"].append("At least one provider is required")
+        else:
+            # Check for malformed providers
+            for provider_name, provider_config in config.providers.items():
+                try:
+                    ProviderConfig.model_validate(provider_config.model_dump())
+                except Exception as e:
+                    errors["providers"].append(f"Provider '{provider_name}': {str(e)}")
+
+        # Check for required agents and additional/unrecognized agents
         required_agents = set(get_agent_values())
         configured_agents: set[str] = (
             set(config.agents.keys()) if config.agents else set()
         )
 
         missing_agents = required_agents - configured_agents
-        additional_agents = configured_agents - required_agents
 
         if missing_agents:
-            error_msg = f"Missing required agents: {sorted(missing_agents)}. Required agents: {sorted(required_agents)}"
-            if panic:
-                raise ValueError(error_msg)
-            return False
+            errors["missing"].extend(
+                [f"Agent '{agent}'" for agent in sorted(missing_agents)]
+            )
 
-        if additional_agents:
-            error_msg = f"Unexpected agents in config: {sorted(additional_agents)}. Only these agents are allowed: {sorted(required_agents)}"
-            if panic:
-                raise ValueError(error_msg)
-            return False
+        # Add unrecognized agents from dropped items (already detected during loading)
+        if self._dropped_items["unrecognized_agents"]:
+            errors["additional"].extend(
+                [
+                    f"Agent '{agent}'"
+                    for agent in sorted(self._dropped_items["unrecognized_agents"])
+                ]
+            )
 
-        # Validate providers and agent references
-        for agent_name, agent_config in config.agents.items():
-            if agent_config.provider_ref not in config.providers:
-                error_msg = f"Agent '{agent_name}' references non-existent provider '{agent_config.provider_ref}'"
-                if panic:
-                    raise ValueError(error_msg)
-                return False
+        # Add malformed providers from dropped items
+        if self._dropped_items["malformed_providers"]:
+            errors["providers"].extend(
+                [
+                    f"Provider '{provider}' (malformed)"
+                    for provider in sorted(self._dropped_items["malformed_providers"])
+                ]
+            )
 
-            provider_config = config.providers[agent_config.provider_ref]
-            try:
-                # Validate provider configuration
-                ProviderConfig.model_validate(provider_config.model_dump())
-            except Exception as e:
-                error_msg = (
-                    f"Malformed provider '{agent_config.provider_ref}': {str(e)}"
-                )
-                if panic:
-                    raise ValueError(error_msg)
-                return False
+        # Add malformed agents from dropped items
+        if self._dropped_items["malformed_agents"]:
+            errors["agents"].extend(
+                [
+                    f"Agent '{agent}' (malformed)"
+                    for agent in sorted(self._dropped_items["malformed_agents"])
+                ]
+            )
 
-            try:
+        # Add orphaned agents from dropped items
+        if self._dropped_items["orphaned_agents"]:
+            errors["agents"].extend(
+                [
+                    f"Agent '{agent}' references non-existent provider"
+                    for agent in sorted(self._dropped_items["orphaned_agents"])
+                ]
+            )
+
+        # Check for malformed agents and provider references
+        if config.agents:
+            for agent_name, agent_config in config.agents.items():
+                # Check if agent references a valid provider
+                if agent_config.provider_ref not in config.providers:
+                    errors["agents"].append(
+                        f"Agent '{agent_name}' references non-existent provider '{agent_config.provider_ref}'"
+                    )
+                    continue
+
                 # Validate agent configuration
-                AgentConfig.model_validate(agent_config.model_dump())
-            except Exception as e:
-                error_msg = f"Malformed agent '{agent_name}': {str(e)}"
-                if panic:
-                    raise ValueError(error_msg)
-                return False
+                try:
+                    AgentConfig.model_validate(agent_config.model_dump())
+                except Exception as e:
+                    errors["agents"].append(f"Agent '{agent_name}': {str(e)}")
 
-        return True
+        # Return based on panic mode
+        has_errors = any(errors.values())
+
+        if has_errors:
+            if panic:
+                raise ValueError("Configuration Invalid")
+            else:
+                return errors
+        else:
+            return True if panic else {}
+
+    def display_validation_errors(self, errors: dict[str, list[str]]) -> None:
+        """Display validation errors in the required format.
+
+        Args:
+            errors: Dictionary containing categorized validation errors
+        """
+        from rich.console import Console
+
+        console = Console()
+
+        console.print("\n[bold yellow]Configuration Issues Found:[/bold yellow]")
+
+        if errors["providers"]:
+            console.print("\n[bold red]Providers:[/bold red]")
+            for error in errors["providers"]:
+                console.print(f"  - {error}")
+
+        if errors["agents"]:
+            console.print("\n[bold red]Agents:[/bold red]")
+            for error in errors["agents"]:
+                console.print(f"  - {error}")
+
+        if errors["missing"]:
+            console.print("\n[bold red]Missing:[/bold red]")
+            for error in errors["missing"]:
+                console.print(f"  - {error}")
+
+        if errors["additional"]:
+            console.print("\n[bold yellow]Additional (unexpected):[/bold yellow]")
+            for error in errors["additional"]:
+                console.print(f"  - {error}")
 
     def clear_cache(self) -> None:
         """Clear the configuration cache."""

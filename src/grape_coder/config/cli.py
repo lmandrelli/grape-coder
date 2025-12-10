@@ -22,7 +22,6 @@ def run_config_setup() -> None:
     # Load existing config or create new one
     if config_manager.config_exists():
         config = config_manager.config or GrapeCoderConfig()
-        console.print("[green]Configuration loaded successfully.[/green]")
     else:
         config = GrapeCoderConfig()
         console.print(
