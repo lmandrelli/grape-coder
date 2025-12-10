@@ -1,12 +1,15 @@
 from typing import cast
 
 from strands import Agent
-from strands.agent.agent_result import AgentResult
+from strands.agent import AgentResult
 from strands.models.model import Model
-from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
+from strands.multiagent import MultiAgentResult
+from strands.multiagent.base import MultiAgentBase, NodeResult, Status
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
+from grape_coder.config import get_config_manager
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -17,11 +20,8 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from grape_coder.config import get_config_manager
-from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 
-
-def create_code_agent(work_path: str) -> Agent:
+def create_code_agent(work_path: str) -> MultiAgentBase:
     """Create a code agent with file system tools"""
 
     # Set work_path for tools
@@ -34,11 +34,11 @@ def create_code_agent(work_path: str) -> Agent:
     # Create agent with file system tools
     system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
 
-CONTEXT:
-You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
-- CSS/styling agents have created style files (.css) with components and design system
-- Content agents have generated text files (.txt) with copy and content
-- Additional agents may have created other web resources (images, data files, etc.)
+    CONTEXT:
+    You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
+    - CSS/styling agents have created style files (.css) with components and design system
+    - Content agents have generated text files (.txt) with copy and content
+    - Additional agents may have created other web resources (images, data files, etc.)
 
 WORKFLOW:
 You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
@@ -49,20 +49,20 @@ Your role is to:
 4. Integrate all resources into cohesive, production-ready web code
 5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets
 
-KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
-Read them, understand them, and incorporate them into your web development work to fulfill the task list.
-Your goal is to produce a functional, well-structured website that integrates all the prepared components.
+    KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
+    Read them, understand them, and incorporate them into your web development work to fulfill the task list.
+    Your goal is to produce a functional, well-structured website that integrates all the prepared components.
 
-Available tools:
-- list_files: List files and directories in a path (automatically called at startup)
-- read_file: Read contents of one or more files
-- edit_file: Edit or create a file with new content
-- grep_files: Search for patterns in files
-- glob_files: Find files using glob patterns
-- fetch_url: Fetch content from a URL
+    Available tools:
+    - list_files: List files and directories in a path (automatically called at startup)
+    - read_file: Read contents of one or more files
+    - edit_file: Edit or create a file with new content
+    - grep_files: Search for patterns in files
+    - glob_files: Find files using glob patterns
+    - fetch_url: Fetch content from a URL
 
-The workspace exploration will be automatically provided to you at the start.
-"""
+    The workspace exploration will be automatically provided to you at the start.
+    """
 
     agent = Agent(
         model=model,
@@ -95,7 +95,7 @@ class WorkspaceExplorerNode(MultiAgentBase):
         try:
             # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
-            
+
             # Build enhanced prompt with workspace context
             workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
 {exploration_result}
@@ -111,9 +111,10 @@ Now proceed with your task:
                 stop_reason="end_turn",
                 state=Status.COMPLETED,
                 metrics=EventLoopMetrics(),
-                message=response.message if hasattr(response, 'message') else Message(
-                    role="assistant",
-                    content=[ContentBlock(text=str(response))]
+                message=response.message
+                if hasattr(response, "message")
+                else Message(
+                    role="assistant", content=[ContentBlock(text=str(response))]
                 ),
             )
 
@@ -145,4 +146,3 @@ Now proceed with your task:
                     )
                 },
             )
-

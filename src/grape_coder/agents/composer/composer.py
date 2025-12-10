@@ -2,13 +2,13 @@ from strands.multiagent import GraphBuilder
 from strands.multiagent.base import Status
 from strands.multiagent.graph import GraphState
 
+from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.nodes.taskfiltering import TaskFilteringNode
 
 from .generate_class import create_class_agent
 from .orchestrator import create_orchestrator_agent
 from .text import create_text_agent
 
-from grape_coder.agents.identifiers import AgentIdentifier
 
 def all_parallel_agents_complete(required_nodes: list[str]):
     """Factory function to create AND condition for multiple dependencies.
@@ -70,16 +70,23 @@ def build_composer(work_path: str):
     # Add edges: orchestrator -> task filters
     builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_class_task")
     builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_text_task")
+    builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_code_task")
 
     # Add edges: task filters -> agents
     builder.add_edge("filter_class_task", AgentIdentifier.GENERATE_CLASS)
     builder.add_edge("filter_text_task", AgentIdentifier.TEXT)
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
-    parallel_agents = [AgentIdentifier.GENERATE_CLASS, AgentIdentifier.TEXT, "filter_code_task"]
+    parallel_agents = [
+        AgentIdentifier.GENERATE_CLASS,
+        AgentIdentifier.TEXT,
+        "filter_code_task",
+    ]
     condition = all_parallel_agents_complete(parallel_agents)
 
-    builder.add_edge(AgentIdentifier.GENERATE_CLASS, AgentIdentifier.CODE, condition=condition)
+    builder.add_edge(
+        AgentIdentifier.GENERATE_CLASS, AgentIdentifier.CODE, condition=condition
+    )
     builder.add_edge(AgentIdentifier.TEXT, AgentIdentifier.CODE, condition=condition)
     builder.add_edge("filter_code_task", AgentIdentifier.CODE, condition=condition)
 
