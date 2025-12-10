@@ -32,7 +32,7 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
     model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
 
     # Create agent with file system tools
-    system_prompt = """You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
+    system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
 
     CONTEXT:
     You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
@@ -40,14 +40,14 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
     - Content agents have generated text files (.txt) with copy and content
     - Additional agents may have created other web resources (images, data files, etc.)
 
-    WORKFLOW:
-    You will receive a list of specific tasks to accomplish from an orchestrator agent.
-    Your role is to:
-    1. First, explore the working directory to understand what has been prepared by previous agents
-    2. Read and understand the generated files (CSS, text content, etc.)
-    3. Use these prepared resources to complete the tasks you've been assigned
-    4. Integrate all resources into cohesive, production-ready web code
-    5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets
+WORKFLOW:
+You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
+Your role is to:
+1. First, explore the working directory to understand what has been prepared by previous agents
+2. Read and understand the generated files (CSS, text content, etc.)
+3. Use these prepared resources to complete the tasks you've been assigned
+4. Integrate all resources into cohesive, production-ready web code
+5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets
 
     KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
     Read them, understand them, and incorporate them into your web development work to fulfill the task list.
