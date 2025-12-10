@@ -1,8 +1,15 @@
 from typing import cast
 
 from strands import Agent
+from strands.agent import AgentResult
 from strands.models.model import Model
+from strands.multiagent import MultiAgentResult
+from strands.multiagent.base import MultiAgentBase, NodeResult, Status
+from strands.telemetry.metrics import EventLoopMetrics
+from strands.types.content import ContentBlock, Message
 
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
+from grape_coder.config import get_config_manager
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -13,11 +20,8 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 
-from grape_coder.config import get_config_manager
-from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 
-
-def create_code_agent(work_path: str) -> Agent:
+def create_code_agent(work_path: str) -> MultiAgentBase:
     """Create a code agent with file system tools"""
 
     # Set work_path for tools
@@ -40,6 +44,7 @@ Available tools:
 - fetch_url: Fetch content from a URL
 
 Before doing anything list files to see what have been done.
+Use tools to create all css files in . folder.
 """
 
     agent = Agent(
@@ -57,4 +62,28 @@ Before doing anything list files to see what have been done.
         description=get_agent_description(AgentIdentifier.CODE),
     )
 
-    return agent
+    return CodeNode(agent=agent)
+
+
+class CodeNode(MultiAgentBase):
+    def __init__(self, agent):
+        super().__init__()
+        self.agent = agent
+
+    async def invoke_async(self, task, invocation_state=None, **kwargs):
+        # task comes from the previous node (Orchestrator's XML output)
+        task = task if isinstance(task, str) else str(task)
+
+        response = await self.agent.invoke_async(task)
+
+        agent_result = AgentResult(
+            stop_reason="end_turn",
+            state=Status.COMPLETED,
+            metrics=EventLoopMetrics(),
+            message=Message(role="assistant", content=[ContentBlock(text=response)]),
+        )
+
+        return MultiAgentResult(
+            status=Status.COMPLETED,
+            results={"code": NodeResult(result=agent_result, status=Status.COMPLETED)},
+        )
