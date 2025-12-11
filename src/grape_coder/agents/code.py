@@ -37,7 +37,7 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
 
     CONTEXT:
     You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
-    - CSS/styling agents have created style files (.css) with components and design system
+    - CSS/styling agents have created style files (.css) for components
     - Content agents have generated text files (.txt) with copy and content
     - Graphics agents have created SVG files (.svg) with icons, logos, and illustrations
     - Additional agents may have created other web resources (images, data files, etc.)
@@ -53,12 +53,13 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
 
     KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
     Read them, understand them, and incorporate them into your web development work to fulfill the task list.
+    Maybe some files are incomplete, create new one or rewrite them to add missing logic. Especially style files may need additional classes to style the page correctly.
     Your goal is to produce a functional, well-structured website that integrates all the prepared components.
 
     Available tools:
     - list_files: List files and directories in a path (automatically called at startup)
     - read_file: Read contents of one or more files
-    - edit_file: Edit or create a file with new content
+    - edit_file: Rewrite or create a file with new content
     - grep_files: Search for patterns in files
     - glob_files: Find files using glob patterns
     - fetch_url: Fetch content from a URL

@@ -45,7 +45,7 @@ Your role is to:
 Available tools:
 - list_files: List files and directories in a path (automatically called at startup)
 - read_file: Read contents of one or more files
-- edit_file: Edit or create a file with new content
+- edit_file: Rewrite or create a file with new content
 - grep_files: Search for patterns in files
 - glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL

@@ -58,7 +58,7 @@ IMPORTANT CONSTRAINTS:
 Available tools:
 - list_files_contents: List files and directories in the contents folder
 - read_file_contents: Read contents of one or more files from the contents folder
-- edit_file_contents: Create or edit a Markdown file (ONLY .md files allowed)
+- edit_file_contents: Rewrite or create a Markdown file (ONLY .md files allowed)
 - grep_files_contents: Search for patterns in files in the contents folder
 - glob_files_contents: Find files using glob patterns in the contents folder
 
@@ -115,7 +115,7 @@ def edit_file_contents(path: str, content: str) -> str:
     """Edit or create a Markdown file. Only .md files are allowed."""
     if not path.endswith(".md"):
         return f"ERROR: You are only allowed to create and edit Markdown (.md) files. The path '{path}' does not have a .md extension. Please use a .md file instead."
-    
+
     path = os.path.join("contents", path)
     return edit_file(path, content)
 

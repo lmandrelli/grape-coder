@@ -46,7 +46,7 @@ IMPORTANT CONSTRAINTS:
 Available tools:
 - list_files_css: List files and directories in the style folder
 - read_file_css: Read contents of one or more CSS files from the style folder
-- edit_file_css: Create or edit a CSS file (ONLY .css files allowed)
+- edit_file_css: Rewrite or create a CSS file (ONLY .css files allowed)
 - grep_files_css: Search for patterns in CSS files in the style folder
 - glob_files_css: Find CSS files using glob patterns in the style folder
 
@@ -113,7 +113,7 @@ def edit_file_css(path: str, content: str) -> str:
     # Validate that the file has .css extension
     if not path.endswith(".css"):
         return f"ERROR: You are only allowed to create and edit CSS (.css) files. The path '{path}' does not have a .css extension. Please use a .css file instead."
-    
+
     path = os.path.join("style", path)
     return edit_file(path, content)
 
