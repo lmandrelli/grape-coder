@@ -1,7 +1,6 @@
 import os
 import re
 import xml.etree.ElementTree as ET
-from io import StringIO
 
 from strands import Agent, tool
 
@@ -50,7 +49,7 @@ IMPORTANT CONSTRAINTS:
 Available tools:
 - list_files_svg: List files and directories in the svg folder
 - read_file_svg: Read contents of one or more SVG files from the svg folder
-- edit_file_svg: Rewrite or create an SVG file (ONLY .svg files allowed), will send back an error if svg not built correctly
+- edit_file_svg: Rewrite or create an SVG file (ONLY .svg files allowed), automatically validates SVG syntax and will return an error if the SVG is not properly formatted
 - grep_files_svg: Search for patterns in SVG files in the svg folder
 - glob_files_svg: Find SVG files using glob patterns in the svg folder
 
@@ -76,7 +75,7 @@ WORKFLOW:
 1. Read the task list you receive
 2. For each task, understand what graphics or icons are needed
 3. Create appropriate .svg files with well-structured, optimized code
-4. If validation fails, fix the errors and re-validate
+4. The edit_file_svg tool automatically validates SVG syntax - if validation fails, fix the XML/SVG errors and try again
 5. Ensure graphics are accessible and performant
 
 Always output clean, well-documented, production-ready SVG code that passes validation.
@@ -116,72 +115,13 @@ def edit_file_svg(path: str, content: str) -> str:
     if not path.endswith(".svg"):
         return f"ERROR: You are only allowed to create and edit SVG (.svg) files. The path '{path}' does not have a .svg extension. Please use a .svg file instead."
 
+    # Validate SVG content
+    is_valid, error_message = is_valid_svg(content)
+    if not is_valid:
+        return f"ERROR: Invalid SVG content: {error_message}. Please fix the SVG syntax and try again."
+
     path = os.path.join("svg", path)
     return edit_file(path, content)
-
-
-@tool
-def validate_svg(path: str) -> str:
-    """Validate SVG file for syntax and structure errors."""
-    path = os.path.join("svg", path)
-
-    try:
-        # Read the SVG file
-        content = read_file(path)
-
-        # Basic XML structure validation
-        if not content.strip().startswith("<?xml"):
-            return 'WARNING: Missing XML declaration. Recommended: <?xml version="1.0" encoding="UTF-8"?>'
-
-        if 'xmlns="http://www.w3.org/2000/svg"' not in content:
-            return 'ERROR: Missing SVG namespace. Required: xmlns="http://www.w3.org/2000/svg"'
-
-        # Parse XML to check for well-formedness
-        try:
-            ET.parse(StringIO(content))
-        except ET.ParseError as e:
-            return f"ERROR: XML parsing failed - {str(e)}"
-
-        # Check for accessibility elements
-        if "<title>" not in content:
-            return "WARNING: Missing <title> element for accessibility"
-
-        if "<desc>" not in content:
-            return "WARNING: Missing <desc> element for accessibility"
-
-        # Check for viewBox
-        if "viewBox=" not in content:
-            return "WARNING: Missing viewBox attribute for scalability"
-
-        # Check for common SVG elements
-        svg_elements = [
-            "<rect",
-            "<circle",
-            "<ellipse",
-            "<line",
-            "<polyline",
-            "<polygon",
-            "<path",
-            "<text",
-        ]
-        has_content = any(element in content for element in svg_elements)
-        if not has_content:
-            return "WARNING: SVG appears to be empty (no visible elements found)"
-
-        # Check for proper closing tags
-        open_tags = re.findall(r"<(\w+)[^>/]*?>", content)
-        self_closing = re.findall(r"<(\w+)[^>]*/>", content)
-
-        for tag in open_tags:
-            if tag not in self_closing and not re.search(f"</{tag}>", content):
-                return f"ERROR: Unclosed tag detected: <{tag}>"
-
-        return "SUCCESS: SVG file is valid and well-structured"
-
-    except FileNotFoundError:
-        return f"ERROR: SVG file not found at {path}"
-    except Exception as e:
-        return f"ERROR: Unexpected validation error - {str(e)}"
 
 
 @tool
@@ -194,3 +134,50 @@ def grep_files_svg(pattern: str, path: str = ".", file_pattern: str = "*") -> st
 def glob_files_svg(pattern: str, path: str = ".") -> str:
     path = os.path.join("svg", path)
     return glob_files(pattern, path)
+
+
+def is_valid_svg(svg_content: str) -> tuple[bool, str]:
+    """
+    Validate if the given string is a valid SVG.
+
+    Args:
+        svg_content: The SVG content to validate
+
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if not svg_content or not isinstance(svg_content, str):
+        return False, "SVG content must be a non-empty string"
+
+    # Check if it contains basic SVG structure
+    if not svg_content.strip().startswith("<"):
+        return False, "SVG content must start with '<' (XML opening tag)"
+
+    # Check for SVG namespace or root element
+    svg_patterns = [
+        r'<svg[^>]*xmlns="http://www\.w3\.org/2000/svg"',
+        r"<svg[^>]*xmlns=\'http://www\.w3\.org/2000/svg\'",
+        r"<svg[^>]*>",  # Basic SVG tag without namespace
+    ]
+
+    has_svg_root = any(
+        re.search(pattern, svg_content, re.IGNORECASE) for pattern in svg_patterns
+    )
+    if not has_svg_root:
+        return False, "SVG must have a root <svg> element with proper namespace"
+
+    # Try to parse as XML
+    try:
+        # Remove potential BOM and normalize whitespace
+        content = svg_content.strip()
+        if content.startswith("\ufeff"):
+            content = content[1:]
+
+        # Parse the XML
+        ET.fromstring(content)
+        return True, "Valid SVG"
+
+    except ET.ParseError as e:
+        return False, f"Invalid XML/SVG syntax: {str(e)}"
+    except Exception as e:
+        return False, f"SVG validation error: {str(e)}"
