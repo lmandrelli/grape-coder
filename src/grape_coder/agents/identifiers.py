@@ -21,6 +21,7 @@ class AgentIdentifier(str, Enum):
     GENERATE_CLASS = "class_generator"
     TEXT = "text_generator"
     ORCHESTRATOR = "orchestrator"
+    REVIEW = "review_agent"
 
     # Code agent
     CODE = "code_agent"

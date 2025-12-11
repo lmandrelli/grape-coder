@@ -5,10 +5,13 @@ from strands.multiagent.graph import GraphState
 from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.nodes.taskfiltering import TaskFilteringNode
 
-from .generate_class import create_class_agent
 from .orchestrator import create_orchestrator_agent
 from .text import create_text_agent
+from .generate_class import create_class_agent
+from .reviewer import create_review_agent
 
+
+code_agent_after_review_id = AgentIdentifier.CODE + "_after_review"
 
 def all_parallel_agents_complete(required_nodes: list[str]):
     """Factory function to create AND condition for multiple dependencies.
@@ -33,7 +36,7 @@ def build_composer(work_path: str):
 
     Graph structure:
         orchestrator
-            ├── filter_class_task -> class_agent  ─┬──> code_agent
+            ├── filter_class_task -> class_agent  ─┬──> code_agent ─> review_agent ──> code_agent_after_review
             └── filter_text_task  -> text_agent   ─┘
 
     Orchestrator analyzes the task and creates a distribution plan.
@@ -49,6 +52,8 @@ def build_composer(work_path: str):
     class_agent = create_class_agent(work_path)
     text_agent = create_text_agent(work_path)
     code_agent = create_code_agent(work_path)
+    review_agent = create_review_agent(work_path)
+    code_agent_after_review = create_code_agent(work_path)
 
     # Create task filtering nodes
     class_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.GENERATE_CLASS)
@@ -66,6 +71,8 @@ def build_composer(work_path: str):
     builder.add_node(text_agent, AgentIdentifier.TEXT)
     builder.add_node(code_filter, "filter_code_task")
     builder.add_node(code_agent, AgentIdentifier.CODE)
+    builder.add_node(review_agent, AgentIdentifier.REVIEW)
+    builder.add_node(code_agent_after_review, code_agent_after_review_id)
 
     # Add edges: orchestrator -> task filters
     builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_class_task")
@@ -89,6 +96,9 @@ def build_composer(work_path: str):
     )
     builder.add_edge(AgentIdentifier.TEXT, AgentIdentifier.CODE, condition=condition)
     builder.add_edge("filter_code_task", AgentIdentifier.CODE, condition=condition)
+    
+    builder.add_edge(AgentIdentifier.CODE, AgentIdentifier.REVIEW)
+    builder.add_edge(AgentIdentifier.REVIEW, code_agent_after_review_id)
 
     # Set entry point
     builder.set_entry_point(AgentIdentifier.ORCHESTRATOR)
