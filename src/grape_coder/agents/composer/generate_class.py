@@ -4,6 +4,7 @@ from strands import Agent, tool
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_tool_tracker
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -90,6 +91,7 @@ Always output clean, well-documented, production-ready CSS code.
         system_prompt=system_prompt,
         name=AgentIdentifier.GENERATE_CLASS,
         description=get_agent_description(AgentIdentifier.GENERATE_CLASS),
+        hooks=[get_tool_tracker(AgentIdentifier.GENERATE_CLASS)],
     )
 
 
@@ -109,7 +111,7 @@ def read_file_css(path: str) -> str:
 def edit_file_css(path: str, content: str) -> str:
     """Edit or create a CSS file. Only .css files are allowed."""
     # Validate that the file has .css extension
-    if not path.endswith('.css'):
+    if not path.endswith(".css"):
         return f"ERROR: You are only allowed to create and edit CSS (.css) files. The path '{path}' does not have a .css extension. Please use a .css file instead."
     
     path = os.path.join("style", path)

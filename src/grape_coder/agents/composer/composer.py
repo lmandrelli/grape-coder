@@ -77,7 +77,7 @@ def build_composer(work_path: str):
     builder.add_edge("filter_text_task", AgentIdentifier.TEXT)
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
-    parallel_agents = [
+    parallel_agents : list[str] = [
         AgentIdentifier.GENERATE_CLASS,
         AgentIdentifier.TEXT,
         "filter_code_task",

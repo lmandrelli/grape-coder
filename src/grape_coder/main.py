@@ -1,4 +1,5 @@
 import importlib.metadata
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -14,7 +15,14 @@ from .agents.planner import build_planner
 from .config import run_config_setup
 from .config.manager import get_config_manager
 
+logging.getLogger("strands").setLevel(logging.DEBUG)
+logging.basicConfig(
+    format="%(levelname)s | %(name)s | %(message)s",
+    handlers=[logging.FileHandler("grape_coder.log", mode="a")],
+)
+
 app = typer.Typer(no_args_is_help=True)
+
 console = Console()
 
 
