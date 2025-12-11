@@ -72,7 +72,7 @@ Your role is to:
         tools=[
             list_files,
             read_file,
-            edit_file,
+            edit_file_code,
             grep_files,
             glob_files,
             fetch_url,
@@ -85,6 +85,15 @@ Your role is to:
 
     return WorkspaceExplorerNode(agent=agent, work_path=work_path)
 
+@tool
+def edit_file_code(path: str, content: str) -> str:
+    """Edit or create a web file. Only .html, .js, .css, and .md files are allowed."""
+    # Validate that the file has an allowed extension
+    allowed_extensions = ('.html', '.js', '.css', '.md')
+    if not path.endswith(allowed_extensions):
+        return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .md. The path '{path}' does not have an allowed extension."
+    
+    return edit_file(path, content)
 
 class WorkspaceExplorerNode(MultiAgentBase):
     """Custom node that automatically explores the workspace before processing tasks"""
