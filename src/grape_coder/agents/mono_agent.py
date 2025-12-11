@@ -8,7 +8,7 @@ from strands.multiagent.base import MultiAgentBase, NodeResult, Status
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
@@ -29,7 +29,7 @@ def create_mono_agent(work_path: str) -> MultiAgentBase:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
+    model = cast(Model, config_manager.get_model(AgentIdentifier.MONO_AGENT))
 
     # Create agent with file system tools
     system_prompt = """You are a code assistant specialized in web development and general programming tasks.
@@ -64,14 +64,14 @@ The workspace exploration will be automatically provided to you at the start.
             fetch_url,
         ],
         system_prompt=system_prompt,
-        name="mono-agent",
-        description="A standalone coding agent for general programming tasks",
+        name=AgentIdentifier.MONO_AGENT,
+        description=get_agent_description(AgentIdentifier.MONO_AGENT),
     )
 
-    return WorkspaceExplorerNode(agent=agent, work_path=work_path)
+    return MonoAgentNode(agent=agent, work_path=work_path)
 
 
-class WorkspaceExplorerNode(MultiAgentBase):
+class MonoAgentNode(MultiAgentBase):
     """Custom node that automatically explores the workspace before processing tasks"""
 
     def __init__(self, agent: Agent, work_path: str):
