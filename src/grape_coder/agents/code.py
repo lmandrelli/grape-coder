@@ -1,6 +1,8 @@
+import os
+
 from typing import cast
 
-from strands import Agent
+from strands import Agent, tool
 from strands.agent import AgentResult
 from strands.models.model import Model
 from strands.multiagent import MultiAgentResult
