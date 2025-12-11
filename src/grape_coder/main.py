@@ -8,6 +8,7 @@ import typer
 from rich.console import Console
 
 from grape_coder.agents.todo import create_todo_generator_agent
+from grape_coder import set_debug_mode
 
 from .agents.composer import build_composer
 from .agents.mono_agent import create_mono_agent
@@ -154,8 +155,12 @@ def code(
     path: str = typer.Argument(
         ".", help="Path to work in (default: current directory)"
     ),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug mode with verbose output"),
 ):
     """Start an interactive code session with file system tools."""
+
+    # Set global debug flag
+    set_debug_mode(debug)
 
     # Validate configuration first with panic mode
     if not validate_config(panic=True):

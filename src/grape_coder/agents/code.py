@@ -12,7 +12,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker
+from grape_coder.display import get_tool_tracker, get_conversation_tracker
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -80,7 +80,7 @@ Your role is to:
         system_prompt=system_prompt,
         name=AgentIdentifier.CODE,
         description=get_agent_description(AgentIdentifier.CODE),
-        hooks=[get_tool_tracker(AgentIdentifier.CODE)],
+        hooks=[get_tool_tracker(AgentIdentifier.CODE), get_conversation_tracker(AgentIdentifier.CODE)],
     )
 
     return WorkspaceExplorerNode(agent=agent, work_path=work_path)
