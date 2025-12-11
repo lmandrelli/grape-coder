@@ -5,6 +5,7 @@ from strands.multiagent.graph import GraphState
 from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.nodes.taskfiltering import TaskFilteringNode
 
+from .generate_js import create_js_agent
 from .orchestrator import create_orchestrator_agent
 from .text import create_text_agent
 from .generate_class import create_class_agent
@@ -50,6 +51,7 @@ def build_composer(work_path: str):
     # Create all agents
     orchestrator = create_orchestrator_agent()
     class_agent = create_class_agent(work_path)
+    js_agent = create_js_agent(work_path)
     text_agent = create_text_agent(work_path)
     code_agent = create_code_agent(work_path)
     review_agent = create_review_agent(work_path)
@@ -57,6 +59,7 @@ def build_composer(work_path: str):
 
     # Create task filtering nodes
     class_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.GENERATE_CLASS)
+    js_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.GENERATE_JS)
     text_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.TEXT)
     code_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.CODE)
 
@@ -66,8 +69,10 @@ def build_composer(work_path: str):
     # Add nodes
     builder.add_node(orchestrator, AgentIdentifier.ORCHESTRATOR)
     builder.add_node(class_filter, "filter_class_task")
+    builder.add_node(js_filter, "filter_js_task")
     builder.add_node(text_filter, "filter_text_task")
     builder.add_node(class_agent, AgentIdentifier.GENERATE_CLASS)
+    builder.add_node(js_agent, AgentIdentifier.GENERATE_JS)
     builder.add_node(text_agent, AgentIdentifier.TEXT)
     builder.add_node(code_filter, "filter_code_task")
     builder.add_node(code_agent, AgentIdentifier.CODE)
@@ -76,16 +81,19 @@ def build_composer(work_path: str):
 
     # Add edges: orchestrator -> task filters
     builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_class_task")
+    builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_js_task")
     builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_text_task")
     builder.add_edge(AgentIdentifier.ORCHESTRATOR, "filter_code_task")
 
     # Add edges: task filters -> agents
     builder.add_edge("filter_class_task", AgentIdentifier.GENERATE_CLASS)
+    builder.add_edge("filter_js_task", AgentIdentifier.GENERATE_JS)
     builder.add_edge("filter_text_task", AgentIdentifier.TEXT)
 
     # Add edges: parallel agents -> code_agent (wait for ALL to complete)
     parallel_agents : list[str] = [
         AgentIdentifier.GENERATE_CLASS,
+        AgentIdentifier.GENERATE_JS,
         AgentIdentifier.TEXT,
         "filter_code_task",
     ]
@@ -94,6 +102,7 @@ def build_composer(work_path: str):
     builder.add_edge(
         AgentIdentifier.GENERATE_CLASS, AgentIdentifier.CODE, condition=condition
     )
+    builder.add_edge(AgentIdentifier.GENERATE_JS, AgentIdentifier.CODE, condition=condition)
     builder.add_edge(AgentIdentifier.TEXT, AgentIdentifier.CODE, condition=condition)
     builder.add_edge("filter_code_task", AgentIdentifier.CODE, condition=condition)
     

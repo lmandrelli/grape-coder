@@ -38,23 +38,30 @@ def create_orchestrator_agent() -> MultiAgentBase:
        - Outputs: .css files only
        - Examples: button styles, navigation bars, card components, grid layouts, color schemes
 
-    2. {AgentIdentifier.TEXT}: Content Writer
+    2. {AgentIdentifier.GENERATE_JS}: JavaScript Specialist
+       - Creates reusable JavaScript components and utilities
+       - Handles all client-side scripting, interactivity, and DOM manipulation
+       - Outputs: .js files only
+       - Examples: dropdowns, modals, form validation, client-side utilities
+
+    3. {AgentIdentifier.TEXT}: Content Writer
        - Generates all text content for the website
        - Creates web-optimized copy (short paragraphs, scannable, action-oriented)
        - Outputs: .md (Markdown) files only
        - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
 
-    3. {AgentIdentifier.CODE}: HTML Integrator
+    4. {AgentIdentifier.CODE}: HTML Integrator
        - Takes CSS and content files and creates the final HTML structure
        - Integrates all components into a cohesive, functional website
        - Outputs: .html files
-       - This agent works AFTER class_agent and {AgentIdentifier.TEXT} complete their work
+       - This agent works AFTER {AgentIdentifier.GENERATE_CLASS}, {AgentIdentifier.GENERATE_JS} and {AgentIdentifier.TEXT} complete their work
 
     TASK DISTRIBUTION PROCESS:
     1. You receive a TODO LIST with tasks to accomplish
     2. Analyze each task in the list
     3. Determine which agent should handle each task:
        - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
+       - If it's about JavaScript functionality, interactivity, DOM manipulation → assign to {AgentIdentifier.GENERATE_JS}
        - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
        - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
     4. You may also break down complex tasks into multiple sub-tasks if needed
@@ -70,6 +77,11 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Another CSS task description</task>
         ...
     </{AgentIdentifier.GENERATE_CLASS}>
+    <{AgentIdentifier.GENERATE_JS}>
+        <task>Specific JavaScript task description</task>
+        <task>Another JavaScript task description</task>
+        ...
+    </{AgentIdentifier.GENERATE_JS}>
     <{AgentIdentifier.TEXT}>
         <task>Specific content writing task</task>
         <task>Another content writing task</task>
@@ -96,6 +108,10 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Style the project cards with hover effects and proper spacing</task>
         <task>Create overall responsive layout and color scheme for portfolio</task>
     </{AgentIdentifier.GENERATE_CLASS}>
+    <{AgentIdentifier.GENERATE_JS}>
+        <task>Create JavaScript for responsive navigation bar (toggle menu on mobile)</task>
+        <task>Add interactivity to project cards (e.g., modals, filters)</task>
+    </{AgentIdentifier.GENERATE_JS}>
     <{AgentIdentifier.TEXT}>
         <task>Write an engaging hero section with headline and introduction</task>
         <task>Create about me content describing background and skills</task>
@@ -298,6 +314,7 @@ def validate_distribution(xml_distribution: str) -> str:
 
         required_agents = [
             AgentIdentifier.GENERATE_CLASS,
+            AgentIdentifier.GENERATE_JS,
             AgentIdentifier.TEXT,
             AgentIdentifier.CODE,
         ]
