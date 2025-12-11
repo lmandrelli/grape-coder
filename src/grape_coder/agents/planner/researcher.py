@@ -9,6 +9,7 @@ from grape_coder.tools.work_path import (
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_tool_tracker
 
 
 def create_researcher_agent(work_path: str) -> Agent:
@@ -64,4 +65,5 @@ Focus on creating a well-structured, maintainable static website using web stand
         system_prompt=system_prompt,
         name=AgentIdentifier.RESEARCHER,
         description=get_agent_description(AgentIdentifier.RESEARCHER),
+        hooks=[get_tool_tracker(AgentIdentifier.RESEARCHER)],
     )

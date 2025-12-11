@@ -8,6 +8,7 @@ from grape_coder.tools.work_path import (
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_tool_tracker
 
 
 def create_content_planner_agent(work_path: str) -> Agent:
@@ -64,4 +65,5 @@ Your output should be comprehensive and ready for generating implementation task
         system_prompt=system_prompt,
         name=AgentIdentifier.CONTENT_PLANNER,
         description=get_agent_description(AgentIdentifier.CONTENT_PLANNER),
+        hooks=[get_tool_tracker(AgentIdentifier.CONTENT_PLANNER)],
     )
