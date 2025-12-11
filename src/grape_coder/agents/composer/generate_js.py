@@ -71,7 +71,7 @@ WORKFLOW:
 AVAILABLE TOOLS:
 - list_files_js: List files in the scripts folder
 - read_file_js: Read script files
-- edit_file_js: Create or edit a JavaScript file (ONLY .js files allowed)
+- edit_file_js: Rewrite or create a JavaScript file (ONLY .js files allowed)
 - grep_files_js: Search within script files
 - glob_files_js: Find script files using glob patterns
 
@@ -120,7 +120,7 @@ def edit_file_js(path: str, content: str) -> str:
     # Validate that the file has .js extension
     if not path.endswith(".js"):
         return f"ERROR: You are only allowed to create and edit JavaScript (.js) files. The path '{path}' does not have a .js extension. Please use a .js file instead."
-    if '/' in path or '\\' in path:
+    if "/" in path or "\\" in path:
         return f"ERROR: You cannot create files in subdirectories. The path '{path}' contains directory separators. Please use only a filename like 'main.js', not 'style/main.js'. You are already placed in the correct working directory."
 
     path = os.path.join("scripts", path)
