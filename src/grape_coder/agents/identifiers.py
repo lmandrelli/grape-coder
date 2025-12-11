@@ -25,6 +25,7 @@ class AgentIdentifier(str, Enum):
 
     GENERATE_CLASS = "class_generator"
     TEXT = "text_generator"
+    SVG = "svg_generator"
 
     # Code agent
     CODE = "code_agent"
@@ -44,8 +45,9 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.RESEARCHER: "Research and information gathering agent",
     AgentIdentifier.TODO: "Todo list generation agent",
     AgentIdentifier.ORCHESTRATOR: "Orchestration agent for multi-agent coordination",
-    AgentIdentifier.GENERATE_CLASS: "Class generation agent",
-    AgentIdentifier.TEXT: "Text processing and generation agent",
+    AgentIdentifier.GENERATE_CLASS: "CSS class generation agent",
+    AgentIdentifier.TEXT: "Text generation agent",
+    AgentIdentifier.SVG: "SVG generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
 }
