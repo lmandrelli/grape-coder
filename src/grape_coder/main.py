@@ -97,9 +97,8 @@ def config():
 
 @app.command()
 def mono_agent(
-    prompt: str = typer.Argument(..., help="User prompt for the mono-agent"),
-    path: str = typer.Option(
-        ".", "--path", "-p", help="Path to work in (default: current directory)"
+    path: str = typer.Argument(
+        ".", help="Path to work in (default: current directory)"
     ),
 ):
     """Run a single coding agent with the given prompt."""
@@ -121,11 +120,13 @@ def mono_agent(
     console.print(f"[green]Running Mono-Agent in: {work_path}[/green]")
 
     try:
+        user_input = console.input("\n[bold cyan]You:[/bold cyan] ")
+
         console.print("[blue]💻 Mono-Agent[/blue]")
 
         # Create and run the mono-agent
         mono_agent = create_mono_agent(str(work_path))
-        result = mono_agent(prompt)
+        result = mono_agent(user_input)
 
         if result.status.value == "completed":
             console.print("[green]✓ Task completed successfully[/green]")
