@@ -39,12 +39,18 @@ def create_orchestrator_agent() -> MultiAgentBase:
        - Examples: button styles, navigation bars, card components, grid layouts, color schemes
 
     2. {AgentIdentifier.TEXT}: Content Writer
-       - Generates all text content for the website
-       - Creates web-optimized copy (short paragraphs, scannable, action-oriented)
-       - Outputs: .md (Markdown) files only
-       - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
+        - Generates all text content for the website
+        - Creates web-optimized copy (short paragraphs, scannable, action-oriented)
+        - Outputs: .md (Markdown) files only
+        - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
 
-    3. {AgentIdentifier.CODE}: HTML Integrator
+    3. {AgentIdentifier.SVG}: Graphics Designer
+        - Creates SVG graphics, icons, logos, and illustrations
+        - Generates optimized, accessible, and scalable vector graphics
+        - Outputs: .svg files only
+        - Examples: logos, icons, illustrations, decorative elements, charts
+
+    4. {AgentIdentifier.CODE}: HTML Integrator
        - Takes CSS and content files and creates the final HTML structure
        - Integrates all components into a cohesive, functional website
        - Outputs: .html files
@@ -54,9 +60,10 @@ def create_orchestrator_agent() -> MultiAgentBase:
     1. You receive a TODO LIST with tasks to accomplish
     2. Analyze each task in the list
     3. Determine which agent should handle each task:
-       - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
-       - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
-       - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
+        - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
+        - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
+        - If it's about graphics, icons, logos, illustrations, SVG → assign to {AgentIdentifier.SVG}
+        - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
     4. You may also break down complex tasks into multiple sub-tasks if needed
     5. Ensure all tasks from the TODO LIST are distributed
     6. Group related tasks together under the same agent
@@ -75,6 +82,11 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Another content writing task</task>
         ...
     </{AgentIdentifier.TEXT}>
+    <{AgentIdentifier.SVG}>
+        <task>Specific graphics/illustration task</task>
+        <task>Another graphics task</task>
+        ...
+    </{AgentIdentifier.SVG}>
     <{AgentIdentifier.CODE}>
         <task>HTML integration task (usually one main task to combine everything)</task>
     </{AgentIdentifier.CODE}>
@@ -100,8 +112,12 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Write an engaging hero section with headline and introduction</task>
         <task>Create about me content describing background and skills</task>
     </{AgentIdentifier.TEXT}>
+    <{AgentIdentifier.SVG}>
+        <task>Create portfolio logo and social media icons</task>
+        <task>Design decorative illustrations for hero section</task>
+    </{AgentIdentifier.SVG}>
     <{AgentIdentifier.CODE}>
-        <task>Integrate navigation, hero section, project cards, and about section into a complete HTML portfolio page</task>
+        <task>Integrate navigation, hero section, project cards, about section, and SVG graphics into a complete HTML portfolio page</task>
     </{AgentIdentifier.CODE}>
     </task_distribution>
 
@@ -299,6 +315,7 @@ def validate_distribution(xml_distribution: str) -> str:
         required_agents = [
             AgentIdentifier.GENERATE_CLASS,
             AgentIdentifier.TEXT,
+            AgentIdentifier.SVG,
             AgentIdentifier.CODE,
         ]
         found_agents = [child.tag for child in root]
