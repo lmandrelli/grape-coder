@@ -26,6 +26,7 @@ class AgentIdentifier(str, Enum):
     GENERATE_CLASS = "class_generator"
     GENERATE_JS = "js_generator"
     TEXT = "text_generator"
+    REVIEW = "review_agent"
 
     # Code agent
     CODE = "code_agent"
@@ -50,6 +51,7 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.TEXT: "Text processing and generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
+    AgentIdentifier.REVIEW: "Code review and quality assurance agent",
 }
 
 
