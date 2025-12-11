@@ -8,7 +8,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
 
 
 def create_orchestrator_agent() -> MultiAgentBase:
@@ -38,32 +38,39 @@ def create_orchestrator_agent() -> MultiAgentBase:
        - Outputs: .css files only
        - Examples: button styles, navigation bars, card components, grid layouts, color schemes
 
-    2. {AgentIdentifier.TEXT}: Content Writer
-        - Generates all text content for the website
-        - Creates web-optimized copy (short paragraphs, scannable, action-oriented)
-        - Outputs: .md (Markdown) files only
-        - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
+    2. {AgentIdentifier.GENERATE_JS}: JavaScript Specialist
+       - Creates reusable JavaScript components and utilities
+       - Handles all client-side scripting, interactivity, and DOM manipulation
+       - Outputs: .js files only
+       - Examples: dropdowns, modals, form validation, client-side utilities
 
-    3. {AgentIdentifier.SVG}: Graphics Designer
+    3. {AgentIdentifier.TEXT}: Content Writer
+       - Generates all text content for the website
+       - Creates web-optimized copy (short paragraphs, scannable, action-oriented)
+       - Outputs: .md (Markdown) files only
+       - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
+
+    4. {AgentIdentifier.SVG}: Graphics Designer
         - Creates SVG graphics, icons, logos, and illustrations
         - Generates optimized, accessible, and scalable vector graphics
         - Outputs: .svg files only
         - Examples: logos, icons, illustrations, decorative elements, charts
 
-    4. {AgentIdentifier.CODE}: HTML Integrator
+    5. {AgentIdentifier.CODE}: HTML Integrator
        - Takes CSS and content files and creates the final HTML structure
        - Integrates all components into a cohesive, functional website
        - Outputs: .html files
-       - This agent works AFTER class_agent and {AgentIdentifier.TEXT} complete their work
+       - This agent works AFTER {AgentIdentifier.GENERATE_CLASS}, {AgentIdentifier.GENERATE_JS}, {AgentIdentifier.SVG} and {AgentIdentifier.TEXT} complete their work
 
     TASK DISTRIBUTION PROCESS:
     1. You receive a TODO LIST with tasks to accomplish
     2. Analyze each task in the list
     3. Determine which agent should handle each task:
-        - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
-        - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
-        - If it's about graphics, icons, logos, illustrations, SVG → assign to {AgentIdentifier.SVG}
-        - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
+       - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
+       - If it's about JavaScript functionality, interactivity, DOM manipulation → assign to {AgentIdentifier.GENERATE_JS}
+       - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
+       - If it's about graphics, icons, logos, illustrations, SVG → assign to {AgentIdentifier.SVG}
+       - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
     4. You may also break down complex tasks into multiple sub-tasks if needed
     5. Ensure all tasks from the TODO LIST are distributed
     6. Group related tasks together under the same agent
@@ -77,6 +84,11 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Another CSS task description</task>
         ...
     </{AgentIdentifier.GENERATE_CLASS}>
+    <{AgentIdentifier.GENERATE_JS}>
+        <task>Specific JavaScript task description</task>
+        <task>Another JavaScript task description</task>
+        ...
+    </{AgentIdentifier.GENERATE_JS}>
     <{AgentIdentifier.TEXT}>
         <task>Specific content writing task</task>
         <task>Another content writing task</task>
@@ -108,6 +120,10 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Style the project cards with hover effects and proper spacing</task>
         <task>Create overall responsive layout and color scheme for portfolio</task>
     </{AgentIdentifier.GENERATE_CLASS}>
+    <{AgentIdentifier.GENERATE_JS}>
+        <task>Create JavaScript for responsive navigation bar (toggle menu on mobile)</task>
+        <task>Add interactivity to project cards (e.g., modals, filters)</task>
+    </{AgentIdentifier.GENERATE_JS}>
     <{AgentIdentifier.TEXT}>
         <task>Write an engaging hero section with headline and introduction</task>
         <task>Create about me content describing background and skills</task>
@@ -128,7 +144,10 @@ def create_orchestrator_agent() -> MultiAgentBase:
         system_prompt=system_prompt,
         name=AgentIdentifier.ORCHESTRATOR,
         description=get_agent_description(AgentIdentifier.ORCHESTRATOR),
-        hooks=[get_tool_tracker(AgentIdentifier.ORCHESTRATOR)],
+        hooks=[
+            get_tool_tracker(AgentIdentifier.ORCHESTRATOR),
+            get_conversation_tracker(AgentIdentifier.ORCHESTRATOR),
+        ],
         callback_handler=None,
     )
 
@@ -314,6 +333,7 @@ def validate_distribution(xml_distribution: str) -> str:
 
         required_agents = [
             AgentIdentifier.GENERATE_CLASS,
+            AgentIdentifier.GENERATE_JS,
             AgentIdentifier.TEXT,
             AgentIdentifier.SVG,
             AgentIdentifier.CODE,

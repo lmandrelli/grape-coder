@@ -24,6 +24,7 @@ class AgentIdentifier(str, Enum):
     ORCHESTRATOR = "orchestrator"
 
     GENERATE_CLASS = "class_generator"
+    GENERATE_JS = "js_generator"
     TEXT = "text_generator"
     SVG = "svg_generator"
 
@@ -48,6 +49,7 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.GENERATE_CLASS: "CSS class generation agent",
     AgentIdentifier.TEXT: "Text generation agent",
     AgentIdentifier.SVG: "SVG generation agent",
+    AgentIdentifier.GENERATE_JS: "JavaScript generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
 }
