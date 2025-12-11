@@ -1,5 +1,3 @@
-import os
-
 from typing import cast
 
 from strands import Agent, tool
@@ -12,7 +10,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker, get_conversation_tracker
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -39,27 +37,29 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
 
     CONTEXT:
     You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
-    - CSS/styling agents have created style files (.css) with components and design system
+    - CSS/styling agents have created style files (.css) for components
     - Content agents have generated text files (.txt) with copy and content
+    - Graphics agents have created SVG files (.svg) with icons, logos, and illustrations
     - Additional agents may have created other web resources (images, data files, etc.)
 
-WORKFLOW:
-You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
-Your role is to:
-1. First, explore the working directory to understand what has been prepared by previous agents
-2. Read and understand the generated files (CSS, text content, etc.)
-3. Use these prepared resources to complete the tasks you've been assigned
-4. Integrate all resources into cohesive, production-ready web code
-5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets
+    WORKFLOW:
+    You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
+    Your role is to:
+    1. First, explore the working directory to understand what has been prepared by previous agents
+    2. Read and understand the generated files (CSS, text content, SVG graphics, etc.)
+    3. Use these prepared resources to complete the tasks you've been assigned
+    4. Integrate all resources into cohesive, production-ready web code
+    5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets including SVG graphics
 
     KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
     Read them, understand them, and incorporate them into your web development work to fulfill the task list.
+    Maybe some files are incomplete, create new one or rewrite them to add missing logic. Especially style files may need additional classes to style the page correctly.
     Your goal is to produce a functional, well-structured website that integrates all the prepared components.
 
     Available tools:
     - list_files: List files and directories in a path (automatically called at startup)
     - read_file: Read contents of one or more files
-    - edit_file: Edit or create a file with new content
+    - edit_file: Rewrite or create a file with new content
     - grep_files: Search for patterns in files
     - glob_files: Find files using glob patterns
     - fetch_url: Fetch content from a URL
@@ -80,20 +80,25 @@ Your role is to:
         system_prompt=system_prompt,
         name=AgentIdentifier.CODE,
         description=get_agent_description(AgentIdentifier.CODE),
-        hooks=[get_tool_tracker(AgentIdentifier.CODE), get_conversation_tracker(AgentIdentifier.CODE)],
+        hooks=[
+            get_tool_tracker(AgentIdentifier.CODE),
+            get_conversation_tracker(AgentIdentifier.CODE),
+        ],
     )
 
     return WorkspaceExplorerNode(agent=agent, work_path=work_path)
+
 
 @tool
 def edit_file_code(path: str, content: str) -> str:
     """Edit or create a web file. Only .html, .js, .css, and .md files are allowed."""
     # Validate that the file has an allowed extension
-    allowed_extensions = ('.html', '.js', '.css', '.md')
+    allowed_extensions = (".html", ".js", ".css", ".md")
     if not path.endswith(allowed_extensions):
         return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .md. The path '{path}' does not have an allowed extension."
-    
+
     return edit_file(path, content)
+
 
 class WorkspaceExplorerNode(MultiAgentBase):
     """Custom node that automatically explores the workspace before processing tasks"""

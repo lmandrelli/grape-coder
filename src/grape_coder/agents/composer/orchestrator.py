@@ -8,7 +8,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker, get_conversation_tracker
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
 
 
 def create_orchestrator_agent() -> MultiAgentBase:
@@ -50,11 +50,17 @@ def create_orchestrator_agent() -> MultiAgentBase:
        - Outputs: .md (Markdown) files only
        - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
 
-    4. {AgentIdentifier.CODE}: HTML Integrator
+    4. {AgentIdentifier.SVG}: Graphics Designer
+        - Creates SVG graphics, icons, logos, and illustrations
+        - Generates optimized, accessible, and scalable vector graphics
+        - Outputs: .svg files only
+        - Examples: logos, icons, illustrations, decorative elements, charts
+
+    5. {AgentIdentifier.CODE}: HTML Integrator
        - Takes CSS and content files and creates the final HTML structure
        - Integrates all components into a cohesive, functional website
        - Outputs: .html files
-       - This agent works AFTER {AgentIdentifier.GENERATE_CLASS}, {AgentIdentifier.GENERATE_JS} and {AgentIdentifier.TEXT} complete their work
+       - This agent works AFTER {AgentIdentifier.GENERATE_CLASS}, {AgentIdentifier.GENERATE_JS}, {AgentIdentifier.SVG} and {AgentIdentifier.TEXT} complete their work
 
     TASK DISTRIBUTION PROCESS:
     1. You receive a TODO LIST with tasks to accomplish
@@ -63,6 +69,7 @@ def create_orchestrator_agent() -> MultiAgentBase:
        - If it's about styles, CSS, layouts, colors, design → assign to {AgentIdentifier.GENERATE_CLASS}
        - If it's about JavaScript functionality, interactivity, DOM manipulation → assign to {AgentIdentifier.GENERATE_JS}
        - If it's about writing text, content, copy, headlines → assign to {AgentIdentifier.TEXT}
+       - If it's about graphics, icons, logos, illustrations, SVG → assign to {AgentIdentifier.SVG}
        - If it's about HTML structure, integration, combining elements → assign to {AgentIdentifier.CODE}
     4. You may also break down complex tasks into multiple sub-tasks if needed
     5. Ensure all tasks from the TODO LIST are distributed
@@ -87,6 +94,11 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Another content writing task</task>
         ...
     </{AgentIdentifier.TEXT}>
+    <{AgentIdentifier.SVG}>
+        <task>Specific graphics/illustration task</task>
+        <task>Another graphics task</task>
+        ...
+    </{AgentIdentifier.SVG}>
     <{AgentIdentifier.CODE}>
         <task>HTML integration task (usually one main task to combine everything)</task>
     </{AgentIdentifier.CODE}>
@@ -116,8 +128,12 @@ def create_orchestrator_agent() -> MultiAgentBase:
         <task>Write an engaging hero section with headline and introduction</task>
         <task>Create about me content describing background and skills</task>
     </{AgentIdentifier.TEXT}>
+    <{AgentIdentifier.SVG}>
+        <task>Create portfolio logo and social media icons</task>
+        <task>Design decorative illustrations for hero section</task>
+    </{AgentIdentifier.SVG}>
     <{AgentIdentifier.CODE}>
-        <task>Integrate navigation, hero section, project cards, and about section into a complete HTML portfolio page</task>
+        <task>Integrate navigation, hero section, project cards, about section, and SVG graphics into a complete HTML portfolio page</task>
     </{AgentIdentifier.CODE}>
     </task_distribution>
 
@@ -128,7 +144,10 @@ def create_orchestrator_agent() -> MultiAgentBase:
         system_prompt=system_prompt,
         name=AgentIdentifier.ORCHESTRATOR,
         description=get_agent_description(AgentIdentifier.ORCHESTRATOR),
-        hooks=[get_tool_tracker(AgentIdentifier.ORCHESTRATOR), get_conversation_tracker(AgentIdentifier.ORCHESTRATOR)],
+        hooks=[
+            get_tool_tracker(AgentIdentifier.ORCHESTRATOR),
+            get_conversation_tracker(AgentIdentifier.ORCHESTRATOR),
+        ],
         callback_handler=None,
     )
 
@@ -316,6 +335,7 @@ def validate_distribution(xml_distribution: str) -> str:
             AgentIdentifier.GENERATE_CLASS,
             AgentIdentifier.GENERATE_JS,
             AgentIdentifier.TEXT,
+            AgentIdentifier.SVG,
             AgentIdentifier.CODE,
         ]
         found_agents = [child.tag for child in root]

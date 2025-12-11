@@ -58,7 +58,7 @@ IMPORTANT CONSTRAINTS:
 Available tools:
 - list_files_contents: List files and directories in the contents folder
 - read_file_contents: Read contents of one or more files from the contents folder
-- edit_file_contents: Create or edit a Markdown file (ONLY .md files allowed)
+- edit_file_contents: Rewrite or create a Markdown file (ONLY .md files allowed)
 - grep_files_contents: Search for patterns in files in the contents folder
 - glob_files_contents: Find files using glob patterns in the contents folder
 
