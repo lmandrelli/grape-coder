@@ -1,14 +1,18 @@
 """Conversation tracker hook for displaying agent conversation flow.
 
-This module provides a hook provider that tracks and displays conversation
-messages by agents in real-time using rich formatting.
+This module provides a comprehensive hook provider that tracks and displays conversation
+messages by agents in real-time using rich formatting with full lifecycle awareness
+and personalized context support.
 """
 
 from typing import Any
 
 from rich.console import Console
 from strands.hooks import HookProvider, HookRegistry
-from strands.hooks.events import MessageAddedEvent
+from strands.hooks.events import (
+    BeforeInvocationEvent,
+    AfterInvocationEvent,
+)
 
 from grape_coder.agents.identifiers import AgentIdentifier
 
@@ -17,23 +21,15 @@ _console = Console()
 
 
 class ConversationTracker(HookProvider):
-    """Hook provider that tracks and displays conversation messages by agents.
+    """Enhanced hook provider that tracks and displays conversation messages by agents.
 
-    When an agent processes messages, this hook displays:
-    - User prompts (debug mode only)
-    - Assistant responses (always)
-    - Tool results (debug mode only, truncated)
-
+    This hook provides comprehensive conversation tracking with:
+    - Full request lifecycle tracking (start/end)
     Example output:
-    [agent_name] 🚀 Request #1 starting
-    ────────────────────────────────────────────────────────────
-    [agent_name] 💬 User: What files are in current directory?  (debug only)
-    ────────────────────────────────────────────────────────────
-    [agent_name] 🤖 Assistant: I'll check the current directory for you...
-    ────────────────────────────────────────────────────────────
-    [agent_name] 🛠️ Tool: read_file  (debug only)
-      Result: [truncated tool result]
-    ────────────────────────────────────────────────────────────
+    [agent_name] 🚀 Request #1 starting (user: john_doe, session: abc123)
+    ────────────────────────────────────────────
+    Agent streaming response content...
+    ────────────────────────────────────────────
     [agent_name] ✅ Request #1 completed
     """
 
@@ -52,100 +48,90 @@ class ConversationTracker(HookProvider):
         self.agent_name = agent_name.value
         self.console = console or _console
         self.request_count = 0
+        self.current_request_start = None
         # Access global debug flag
         from grape_coder import get_debug_mode
+
         self.debug_mode = get_debug_mode()
 
     def register_hooks(self, registry: HookRegistry, **kwargs: Any) -> None:
-        """Register the message added hook.
+        """Register comprehensive hooks for full conversation tracking.
 
         Args:
             registry: The hook registry to register callbacks with.
             **kwargs: Additional keyword arguments (unused).
         """
-        registry.add_callback(MessageAddedEvent, self._on_message_added)
+        registry.add_callback(BeforeInvocationEvent, self._on_request_start)
+        registry.add_callback(AfterInvocationEvent, self._on_request_complete)
+
+    def _get_context_info(self, invocation_state: dict[str, Any] | None) -> str:
+        """Extract personalized context information from invocation state.
+
+        Args:
+            invocation_state: The invocation state containing context data.
+
+        Returns:
+            Formatted context string for display.
+        """
+        if not invocation_state:
+            return ""
+
+        context_parts : list[str] = []
+
+        # User information
+        if user_id := invocation_state.get("user_id"):
+            context_parts.append(f"user: {user_id}")
+
+        # Session information
+        if session_id := invocation_state.get("session_id"):
+            context_parts.append(f"session: {session_id}")
+
+        # Request ID
+        if request_id := invocation_state.get("request_id"):
+            context_parts.append(f"req: {request_id}")
+
+        # Custom context
+        if custom_context := invocation_state.get("custom_context"):
+            context_parts.append(f"context: {custom_context}")
+
+        return f" ({', '.join(context_parts)})" if context_parts else ""
 
     def _display_separator(self) -> None:
         """Display a visual separator line."""
         console_width = self.console.width or 80
         separator = "─" * console_width
-        self.console.print(f"[dim]{separator}[/dim]")
+        self.console.print(f"\n[dim]{separator}[/dim]")
 
-    def _on_message_added(self, event: MessageAddedEvent) -> None:
-        """Handle the message added event.
-
-        Displays the message based on its role and debug mode.
+    def _on_request_start(self, event: BeforeInvocationEvent) -> None:
+        """Handle request start event.
 
         Args:
-            event: The MessageAddedEvent containing message info.
+            event: The BeforeInvocationEvent containing request info.
         """
-        message = event.message
-        role = getattr(message, 'role', 'unknown')
-        content = getattr(message, 'content', '')
+        self.request_count += 1
+        self.current_request_start = event
 
-        # Track request lifecycle
-        if role == 'user':
-            self.request_count += 1
-            self._display_separator()
-            self.console.print(
-                f"[bold cyan]\\[{self.agent_name}][/bold cyan] [green]🚀[/green] Request #{self.request_count} starting"
-            )
-            self._display_separator()
+        # Extract context from agent's invocation state
+        context_info = self._get_context_info(getattr(event, "invocation_state", None))
 
-        # Display user messages only in debug mode
-        if role == 'user' and self.debug_mode:
-            self._display_user_message(content)
-        # Always display assistant messages
-        elif role == 'assistant':
-            self._display_assistant_message(content)
-        # Display tool messages only in debug mode
-        elif role == 'tool' and self.debug_mode:
-            self._display_tool_message(content)
-
-        # Mark request completion after assistant response
-        if role == 'assistant':
-            self._display_separator()
-            self.console.print(
-                f"[bold cyan]\\[{self.agent_name}][/bold cyan] [green]✅[/green] Request #{self.request_count} completed"
-            )
-
-    def _display_user_message(self, content: str) -> None:
-        """Display a user message.
-
-        Args:
-            content: The user message content.
-        """
         self._display_separator()
         self.console.print(
-            f"[bold cyan]\\[{self.agent_name}][/bold cyan] [blue]💬[/blue] User: {content}"
+            f"[bold cyan]\\[{self.agent_name}][/bold cyan] [green]🚀[/green] Request #{self.request_count} starting{context_info}"
         )
+        self._display_separator()
 
-    def _display_assistant_message(self, content: str) -> None:
-        """Display an assistant message.
+    def _on_request_complete(self, event: AfterInvocationEvent) -> None:
+        """Handle request completion event.
 
         Args:
-            content: The assistant message content.
+            event: The AfterInvocationEvent containing completion info.
         """
+        # Calculate duration if we have start time
         self._display_separator()
         self.console.print(
-            f"[bold cyan]\\[{self.agent_name}][/bold cyan] [green]🤖[/green] Assistant: {content}"
+            f"[bold cyan]\\[{self.agent_name}][/bold cyan] [green]✅[/green] Request #{self.request_count} completed"
         )
-
-    def _display_tool_message(self, content: str) -> None:
-        """Display a tool message with truncated content.
-
-        Args:
-            content: The tool result content.
-        """
-        self._display_separator()
-        self.console.print(
-            f"[bold cyan]\\[{self.agent_name}][/bold cyan] [yellow]🛠️[/yellow] Tool Result:"
-        )
-        
-        # Truncate tool results for readability
-        if content:
-            truncated_content = content[:150] + "..." if len(content) > 150 else content
-            self.console.print(f"  [dim]{truncated_content}[/dim]")
+        self.current_request_start = None
 
 
 def get_conversation_tracker(
