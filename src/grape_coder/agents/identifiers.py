@@ -28,6 +28,8 @@ class AgentIdentifier(str, Enum):
     TEXT = "text_generator"
     SVG = "svg_generator"
 
+    REVIEW = "review_agent"
+
     # Code agent
     CODE = "code_agent"
 
@@ -52,6 +54,7 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.GENERATE_JS: "JavaScript generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
+    AgentIdentifier.REVIEW: "Code review and quality assurance agent",
 }
 
 
