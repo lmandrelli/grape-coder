@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.config import (
     AgentConfig,
     ConfigManager,
@@ -72,12 +73,16 @@ class TestGrapeCoderConfig:
                     provider=ProviderType.OPENAI, api_key="test-key", api_base_url=None
                 )
             },
-            agents={"code": AgentConfig(provider_ref="openai", model_name="gpt-4o")},
+            agents={
+                AgentIdentifier.CODE: AgentConfig(
+                    provider_ref="openai", model_name="gpt-4o"
+                )
+            },
         )
         assert len(config.providers) == 1
         assert len(config.agents) == 1
         assert "openai" in config.providers
-        assert "code" in config.agents
+        assert AgentIdentifier.CODE in config.agents
 
     def test_agent_references_missing_provider(self):
         """Test validation when agent references missing provider."""
@@ -85,7 +90,7 @@ class TestGrapeCoderConfig:
             GrapeCoderConfig(
                 providers={},
                 agents={
-                    "code": AgentConfig(
+                    AgentIdentifier.CODE: AgentConfig(
                         provider_ref="missing-provider", model_name="gpt-4o"
                     )
                 },
@@ -109,10 +114,17 @@ class TestConfigManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch("platformdirs.user_config_dir", return_value=temp_dir):
                 manager = ConfigManager()
-                config = manager._load_config_from_file()
+                config_result = manager._load_config_from_file()
+                config, dropped_items = config_result
                 assert isinstance(config, GrapeCoderConfig)
                 assert config.providers == {}
                 assert config.agents == {}
+                assert dropped_items == {
+                    "malformed_providers": [],
+                    "malformed_agents": [],
+                    "unrecognized_agents": [],
+                    "orphaned_agents": [],
+                }
 
     def test_save_and_load_config(self):
         """Test saving and loading configuration."""
@@ -130,7 +142,9 @@ class TestConfigManager:
                         )
                     },
                     agents={
-                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                        AgentIdentifier.CODE: AgentConfig(
+                            provider_ref="openai", model_name="gpt-4o"
+                        )
                     },
                 )
 
@@ -138,10 +152,17 @@ class TestConfigManager:
                 manager.save_config(config)
 
                 # Load configuration
-                loaded_config = manager._load_config_from_file()
+                config_result = manager._load_config_from_file()
+                loaded_config, dropped_items = config_result
 
                 assert loaded_config.providers == config.providers
                 assert loaded_config.agents == config.agents
+                assert dropped_items == {
+                    "malformed_providers": [],
+                    "malformed_agents": [],
+                    "unrecognized_agents": [],
+                    "orphaned_agents": [],
+                }
 
     def test_config_exists(self):
         """Test checking if configuration file exists."""
@@ -169,9 +190,19 @@ class TestConfigManager:
                 config_file = manager._config_file
                 config_file.write_text("{ invalid json }")
 
-                # Should raise ValueError
-                with pytest.raises(ValueError, match="Invalid JSON"):
-                    manager._load_config_from_file()
+                # Should return empty config and dropped items (graceful handling)
+                config_result = manager._load_config_from_file()
+                config, dropped_items = config_result
+
+                assert isinstance(config, GrapeCoderConfig)
+                assert config.providers == {}
+                assert config.agents == {}
+                assert dropped_items == {
+                    "malformed_providers": [],
+                    "malformed_agents": [],
+                    "unrecognized_agents": [],
+                    "orphaned_agents": [],
+                }
 
     def test_cache_invalidation(self):
         """Test that cache is invalidated when file changes."""
@@ -180,7 +211,8 @@ class TestConfigManager:
                 manager = ConfigManager()
 
                 # Load initial config
-                config1 = manager._load_config_from_file()
+                config_result1 = manager._load_config_from_file()
+                config1, _ = config_result1
 
                 # Save new config
                 config2 = GrapeCoderConfig(
@@ -195,7 +227,8 @@ class TestConfigManager:
                 manager.save_config(config2)
 
                 # Load again - should get updated config
-                config3 = manager._load_config_from_file()
+                config_result3 = manager._load_config_from_file()
+                config3, _ = config_result3
                 assert config3.providers == config2.providers
                 assert config3.providers != config1.providers
 
@@ -215,7 +248,9 @@ class TestConfigManager:
                         )
                     },
                     agents={
-                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                        AgentIdentifier.CODE: AgentConfig(
+                            provider_ref="openai", model_name="gpt-4o"
+                        )
                     },
                 )
                 manager.save_config(config)
@@ -228,11 +263,12 @@ class TestConfigManager:
                     mock_create.return_value = mock_model
 
                     # Get model
-                    model = manager.get_model("code")
+                    model = manager.get_model(AgentIdentifier.CODE)
 
                     # Verify model creation was called correctly
                     mock_create.assert_called_once_with(
-                        config.providers["openai"], config.agents["code"].model_name
+                        config.providers["openai"],
+                        config.agents[AgentIdentifier.CODE].model_name,
                     )
                     assert model == mock_model
 
@@ -252,7 +288,9 @@ class TestConfigManager:
                         )
                     },
                     agents={
-                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                        AgentIdentifier.CODE: AgentConfig(
+                            provider_ref="openai", model_name="gpt-4o"
+                        )
                     },
                 )
                 manager.save_config(config)
@@ -265,8 +303,8 @@ class TestConfigManager:
                     mock_create.return_value = mock_model
 
                     # Get model twice
-                    model1 = manager.get_model("code")
-                    model2 = manager.get_model("code")
+                    model1 = manager.get_model(AgentIdentifier.CODE)
+                    model2 = manager.get_model(AgentIdentifier.CODE)
 
                     # Should only create model once (cached)
                     mock_create.assert_called_once()
@@ -284,7 +322,7 @@ class TestConfigManager:
 
                 # Should raise ValueError
                 with pytest.raises(ValueError, match="No agents configured"):
-                    manager.get_model("code")
+                    manager.get_model(AgentIdentifier.CODE)
 
     def test_get_model_agent_not_found(self):
         """Test get_model when agent is not found."""
@@ -310,8 +348,10 @@ class TestConfigManager:
                 manager.save_config(config)
 
                 # Should raise ValueError
-                with pytest.raises(ValueError, match="Agent 'code' not found"):
-                    manager.get_model("code")
+                with pytest.raises(
+                    ValueError, match=f"Agent '{AgentIdentifier.CODE}' not found"
+                ):
+                    manager.get_model(AgentIdentifier.CODE)
 
     def test_get_model_creation_failure(self):
         """Test get_model when model creation fails."""
@@ -329,7 +369,9 @@ class TestConfigManager:
                         )
                     },
                     agents={
-                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                        AgentIdentifier.CODE: AgentConfig(
+                            provider_ref="openai", model_name="gpt-4o"
+                        )
                     },
                 )
                 manager.save_config(config)
@@ -342,7 +384,7 @@ class TestConfigManager:
 
                     # Should raise RuntimeError
                     with pytest.raises(RuntimeError, match="Failed to create model"):
-                        manager.get_model("code")
+                        manager.get_model(AgentIdentifier.CODE)
 
     def test_clear_cache_clears_model_cache(self):
         """Test that clear_cache also clears the model cache."""
@@ -360,7 +402,9 @@ class TestConfigManager:
                         )
                     },
                     agents={
-                        "code": AgentConfig(provider_ref="openai", model_name="gpt-4o")
+                        AgentIdentifier.CODE: AgentConfig(
+                            provider_ref="openai", model_name="gpt-4o"
+                        )
                     },
                 )
                 manager.save_config(config)
@@ -373,7 +417,7 @@ class TestConfigManager:
                     mock_create.return_value = mock_model
 
                     # Get model to populate cache
-                    manager.get_model("code")
+                    manager.get_model(AgentIdentifier.CODE)
                     assert len(manager._model_cache) == 1
 
                     # Clear cache
