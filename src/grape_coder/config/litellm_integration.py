@@ -19,7 +19,14 @@ def create_litellm_model(
     model_id = _get_litellm_model_id(provider_config, model_name)
 
     # Create and return the strands LiteLLM model
-    return StrandsLiteLLMModel(model_id=model_id, client_args=client_args)
+    try:
+        model = StrandsLiteLLMModel(model_id=model_id, client_args=client_args)
+        return model
+    except Exception as _:
+        import traceback
+
+        print(f"Error creating LiteLLM model: {traceback.format_exc()}")
+        raise
 
 
 def _get_litellm_model_id(provider_config: ProviderConfig, model_name: str) -> str:
