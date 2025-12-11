@@ -87,6 +87,10 @@ def edit_file(path: str, content: str) -> str:
         content: Content to write to the file
     """
     try:
+        # Check if the path points to a directory
+        if os.path.isdir(path):
+            return f"Error: '{path}' is a directory, not a file. Please specify a file path with an extension. To create a file in a folder, use 'folder/file.html' format."
+        
         # Resolve path relative to work_path
         if not os.path.isabs(path):
             path = os.path.join(_work_path, path)

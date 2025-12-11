@@ -1,8 +1,6 @@
-import os
-
 from typing import cast
 
-from strands import Agent, tool
+from strands import Agent
 from strands.agent import AgentResult
 from strands.models.model import Model
 from strands.multiagent import MultiAgentResult
@@ -12,7 +10,6 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker, get_conversation_tracker
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -24,48 +21,37 @@ from grape_coder.tools.work_path import (
 )
 
 
-def create_code_agent(work_path: str) -> MultiAgentBase:
-    """Create a code agent with file system tools"""
+def create_mono_agent(work_path: str) -> MultiAgentBase:
+    """Create a mono-agent with file system tools"""
 
     # Set work_path for tools
     set_work_path(work_path)
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
+    model = cast(Model, config_manager.get_model(AgentIdentifier.MONO_AGENT))
 
     # Create agent with file system tools
-    system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
-
-    CONTEXT:
-    You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
-    - CSS/styling agents have created style files (.css) with components and design system
-    - Content agents have generated text files (.txt) with copy and content
-    - Additional agents may have created other web resources (images, data files, etc.)
+    system_prompt = """You are a code assistant specialized in web development and general programming tasks.
 
 WORKFLOW:
-You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
 Your role is to:
-1. First, explore the working directory to understand what has been prepared by previous agents
-2. Read and understand the generated files (CSS, text content, etc.)
-3. Use these prepared resources to complete the tasks you've been assigned
-4. Integrate all resources into cohesive, production-ready web code
-5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets
+1. First, explore the working directory to understand the current project structure
+2. Read and understand existing files to get context
+3. Complete the task you've been assigned based on the user's prompt
+4. Create, modify, or integrate code as needed to fulfill the request
+5. Ensure your solution is functional, well-structured, and follows best practices
 
-    KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
-    Read them, understand them, and incorporate them into your web development work to fulfill the task list.
-    Your goal is to produce a functional, well-structured website that integrates all the prepared components.
+Available tools:
+- list_files: List files and directories in a path (automatically called at startup)
+- read_file: Read contents of one or more files
+- edit_file: Edit or create a file with new content
+- grep_files: Search for patterns in files
+- glob_files: Find files using glob patterns
+- fetch_url: Fetch content from a URL
 
-    Available tools:
-    - list_files: List files and directories in a path (automatically called at startup)
-    - read_file: Read contents of one or more files
-    - edit_file: Edit or create a file with new content
-    - grep_files: Search for patterns in files
-    - glob_files: Find files using glob patterns
-    - fetch_url: Fetch content from a URL
-
-    The workspace exploration will be automatically provided to you at the start.
-    """
+The workspace exploration will be automatically provided to you at the start.
+"""
 
     agent = Agent(
         model=model,
@@ -78,15 +64,14 @@ Your role is to:
             fetch_url,
         ],
         system_prompt=system_prompt,
-        name=AgentIdentifier.CODE,
-        description=get_agent_description(AgentIdentifier.CODE),
-        hooks=[get_tool_tracker(AgentIdentifier.CODE), get_conversation_tracker(AgentIdentifier.CODE)],
+        name=AgentIdentifier.MONO_AGENT,
+        description=get_agent_description(AgentIdentifier.MONO_AGENT),
     )
 
-    return WorkspaceExplorerNode(agent=agent, work_path=work_path)
+    return MonoAgentNode(agent=agent, work_path=work_path)
 
 
-class WorkspaceExplorerNode(MultiAgentBase):
+class MonoAgentNode(MultiAgentBase):
     """Custom node that automatically explores the workspace before processing tasks"""
 
     def __init__(self, agent: Agent, work_path: str):

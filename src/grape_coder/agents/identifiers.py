@@ -17,17 +17,21 @@ class AgentIdentifier(str, Enum):
     CONTENT_PLANNER = "content_planner"
     RESEARCHER = "researcher"
 
+    # Todo agent
+    TODO = "todo_generator"
+
     # Composer agents
+    ORCHESTRATOR = "orchestrator"
+
     GENERATE_CLASS = "class_generator"
     TEXT = "text_generator"
-    ORCHESTRATOR = "orchestrator"
     REVIEW = "review_agent"
 
     # Code agent
     CODE = "code_agent"
 
-    # Todo agent
-    TODO = "todo_generator"
+    # Mono-agent
+    MONO_AGENT = "mono_agent"
 
     def __str__(self) -> str:
         return self.value
@@ -39,11 +43,12 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.DESIGNER: "UI/UX design planning agent",
     AgentIdentifier.CONTENT_PLANNER: "Content strategy and planning agent",
     AgentIdentifier.RESEARCHER: "Research and information gathering agent",
+    AgentIdentifier.TODO: "Todo list generation agent",
+    AgentIdentifier.ORCHESTRATOR: "Orchestration agent for multi-agent coordination",
     AgentIdentifier.GENERATE_CLASS: "Class generation agent",
     AgentIdentifier.TEXT: "Text processing and generation agent",
-    AgentIdentifier.ORCHESTRATOR: "Orchestration agent for multi-agent coordination",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
-    AgentIdentifier.TODO: "Todo list generation agent",
+    AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
 }
 
 
@@ -64,7 +69,7 @@ def get_agent_values() -> List[str]:
 
 def get_agent_display_list() -> List[str]:
     """Get formatted list of agents for CLI display."""
-    result : List[str] = []
+    result: List[str] = []
     for agent in AgentIdentifier:
         description = get_agent_description(agent)
         result.append(f"{agent.value}: {description}")

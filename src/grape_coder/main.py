@@ -11,6 +11,7 @@ from grape_coder.agents.todo import create_todo_generator_agent
 from grape_coder import set_debug_mode
 
 from .agents.composer import build_composer
+from .agents.mono_agent import create_mono_agent
 from .agents.planner import build_planner
 from .config import run_config_setup
 from .config.manager import get_config_manager
@@ -104,6 +105,52 @@ def config():
 
 
 @app.command()
+def mono_agent(
+    path: str = typer.Argument(
+        ".", help="Path to work in (default: current directory)"
+    ),
+):
+    """Run a single coding agent with the given prompt."""
+
+    # Validate configuration first with panic mode
+    if not validate_config(panic=True):
+        raise typer.Exit(1)
+
+    # Resolve and validate the path
+    work_path = Path(path).resolve()
+    if not work_path.exists():
+        console.print(f"[red]Error: Path '{path}' does not exist[/red]")
+        raise typer.Exit(1)
+
+    # Change to the target directory
+    original_cwd = os.getcwd()
+    os.chdir(work_path)
+
+    console.print(f"[green]Running Mono-Agent in: {work_path}[/green]")
+
+    try:
+        user_input = console.input("\n[bold cyan]You:[/bold cyan] ")
+
+        console.print("[blue]💻 Mono-Agent[/blue]")
+
+        # Create and run the mono-agent
+        mono_agent = create_mono_agent(str(work_path))
+        result = mono_agent(user_input)
+
+        if result.status.value == "completed":
+            console.print("[green]✓ Task completed successfully[/green]")
+        else:
+            console.print("[red]✗ Task failed[/red]")
+
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        raise typer.Exit(1)
+    finally:
+        # Restore original working directory
+        os.chdir(original_cwd)
+
+
+@app.command()
 def code(
     path: str = typer.Argument(
         ".", help="Path to work in (default: current directory)"
@@ -151,7 +198,7 @@ def code(
 
                 console.print("[bold green]Agent:[/bold green]")
 
-                console.print("\n[green]📄 Planner...[/green]")
+                console.print("\n[green]📄 Planner[/green]")
 
                 try:
                     planner = build_planner(str(work_path))
@@ -175,7 +222,7 @@ def code(
                     graph_input = f"Execute the following todo list for website development:\n{todo_result}"
 
                 except Exception as e:
-                    console.print(f"[bold red]❌ Swarm error: {str(e)}[/bold red]")
+                    console.print(f"[bold red]Swarm error: {str(e)}[/bold red]")
                     console.print(
                         "[bold yellow]Falling back to direct code execution...[/bold yellow]"
                     )
