@@ -24,6 +24,7 @@ class AgentIdentifier(str, Enum):
     ORCHESTRATOR = "orchestrator"
 
     GENERATE_CLASS = "class_generator"
+    GENERATE_JS = "js_generator"
     TEXT = "text_generator"
 
     # Code agent
@@ -45,6 +46,7 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.TODO: "Todo list generation agent",
     AgentIdentifier.ORCHESTRATOR: "Orchestration agent for multi-agent coordination",
     AgentIdentifier.GENERATE_CLASS: "Class generation agent",
+    AgentIdentifier.GENERATE_JS: "JavaScript generation agent",
     AgentIdentifier.TEXT: "Text processing and generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
