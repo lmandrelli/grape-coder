@@ -45,11 +45,12 @@ IMPORTANT CONSTRAINTS:
 - All files you create MUST have the .svg extension
 - You are NOT allowed to create files with other extensions (e.g., .html, .js, .png, .jpg)
 - If you need to create multiple graphics, organize them in separate .svg files
+- Each .svg files should only contain one graphic or icon
 
 Available tools:
 - list_files_svg: List files and directories in the svg folder
 - read_file_svg: Read contents of one or more SVG files from the svg folder
-- edit_file_svg: Create or edit an SVG file (ONLY .svg files allowed), will send back an error if svg not built correctly
+- edit_file_svg: Rewrite or create an SVG file (ONLY .svg files allowed), will send back an error if svg not built correctly
 - grep_files_svg: Search for patterns in SVG files in the svg folder
 - glob_files_svg: Find SVG files using glob patterns in the svg folder
 
