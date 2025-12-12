@@ -1,10 +1,12 @@
 import os
 
 from strands import Agent, tool
+from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker, get_conversation_tracker
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
+from grape_coder.nodes.noinput import NoInputGraphNode
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -16,7 +18,7 @@ from grape_coder.tools.work_path import (
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
-def create_class_agent(work_path: str) -> Agent:
+def create_class_agent(work_path: str) -> MultiAgentBase:
     """Create an agent for creating reusable CSS classes and HTML components"""
 
     # Set work_path for tools
@@ -26,8 +28,14 @@ def create_class_agent(work_path: str) -> Agent:
     config_manager = get_config_manager()
     model = config_manager.get_model(AgentIdentifier.GENERATE_CLASS)
 
+    main_css_file = read_file(
+        os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates", "style", "main.css"
+        )
+    )
+
     # Create agent with class creation tools
-    system_prompt = """You are a CSS class specialist working in a multi-agent system.
+    system_prompt = f"""You are a CSS class specialist working in a multi-agent system.
 
 CONTEXT:
 You are part of a collaborative multi-agent workflow dedicated to creating complete websites.
@@ -78,9 +86,15 @@ WORKFLOW:
 5. Add helpful comments for complex or important styles
 6. Ensure styles are responsive and accessible
 
+EXISTING MAIN CSS FILE:
+<file path="main.css">
+{main_css_file}
+</file>
+
 Always output clean, well-documented, production-ready CSS code.
 """
-    return Agent(
+
+    agent = Agent(
         model=model,
         tools=[
             list_files_css,
@@ -92,8 +106,14 @@ Always output clean, well-documented, production-ready CSS code.
         system_prompt=system_prompt,
         name=AgentIdentifier.GENERATE_CLASS,
         description=get_agent_description(AgentIdentifier.GENERATE_CLASS),
-        hooks=[get_tool_tracker(AgentIdentifier.GENERATE_CLASS), get_conversation_tracker(AgentIdentifier.GENERATE_CLASS), get_tool_limit_hook(AgentIdentifier.GENERATE_CLASS)],
+        hooks=[
+            get_tool_tracker(AgentIdentifier.GENERATE_CLASS),
+            get_conversation_tracker(AgentIdentifier.GENERATE_CLASS),
+            get_tool_limit_hook(AgentIdentifier.GENERATE_CLASS)
+        ],
     )
+
+    return NoInputGraphNode(agent=agent)
 
 
 @tool
@@ -114,7 +134,7 @@ def edit_file_css(path: str, content: str) -> str:
     # Validate that the file has .css extension
     if not path.endswith(".css"):
         return f"ERROR: You are only allowed to create and edit CSS (.css) files. The path '{path}' does not have a .css extension. Please use a .css file instead."
-    if '/' in path or '\\' in path:
+    if "/" in path or "\\" in path:
         return f"ERROR: You cannot create files in subdirectories. The path '{path}' contains directory separators. Please use only a filename like 'main.css', not 'style/main.css'. You are already placed in the correct working directory."
 
     path = os.path.join("style", path)

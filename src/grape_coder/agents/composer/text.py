@@ -1,10 +1,12 @@
 import os
 
 from strands import Agent, tool
+from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker, get_conversation_tracker
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
+from grape_coder.nodes.noinput import NoInputGraphNode
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -16,7 +18,7 @@ from grape_coder.tools.work_path import (
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
-def create_text_agent(work_path: str) -> Agent:
+def create_text_agent(work_path: str) -> MultiAgentBase:
     """Create an agent for generating text content for web pages"""
 
     # Set work_path for tools
@@ -83,7 +85,7 @@ WORKFLOW:
 Always match the brand voice and target audience specified in your tasks.
 """
 
-    return Agent(
+    agent = Agent(
         model=model,
         tools=[
             list_files_contents,
@@ -95,8 +97,13 @@ Always match the brand voice and target audience specified in your tasks.
         system_prompt=system_prompt,
         name=AgentIdentifier.TEXT,
         description=get_agent_description(AgentIdentifier.TEXT),
-        hooks=[get_tool_tracker(AgentIdentifier.TEXT), get_conversation_tracker(AgentIdentifier.TEXT), get_tool_limit_hook(AgentIdentifier.TEXT)],
+        hooks=[
+            get_tool_tracker(AgentIdentifier.TEXT),
+            get_conversation_tracker(AgentIdentifier.TEXT),
+            get_tool_limit_hook(AgentIdentifier.TEXT)
+        ],
     )
+    return NoInputGraphNode(agent=agent)
 
 
 @tool
@@ -116,9 +123,9 @@ def edit_file_contents(path: str, content: str) -> str:
     """Edit or create a Markdown file. Only .md files are allowed."""
     if not path.endswith(".md"):
         return f"ERROR: You are only allowed to create and edit Markdown (.md) files. The path '{path}' does not have a .md extension. Please use a .md file instead."
-    if '/' in path or '\\' in path:
+    if "/" in path or "\\" in path:
         return f"ERROR: You cannot create files in subdirectories. The path '{path}' contains directory separators. Please use only a filename like 'header.md', not 'content/header.md'. You are already placed in the correct working directory."
-    
+
     path = os.path.join("contents", path)
     return edit_file(path, content)
 
