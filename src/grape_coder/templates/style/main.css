@@ -1,0 +1,37 @@
+:root {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+
+    --small-text: 0.9rem;
+
+    /* Spacing values for marging padding */
+    --space-xs: 4px;
+    --space-s: 8px;
+    --space-m: 12px;
+    --space-l: 16px;
+    --space-xl: 20px;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+}
+
+h1 {
+    font-size: 2rem;
+}
+h2 {
+    font-size: 1.7rem;
+}
+h3 {
+    font-size: 1.5rem;
+}
+h4 {
+    font-size: 1.3rem;
+}
+h5 {
+    font-size: 1.2rem;
+}
+h6 {
+    font-size: 1.1rem;
+}
