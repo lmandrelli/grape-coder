@@ -1,10 +1,12 @@
 import os
 
 from strands import Agent, tool
+from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
-from grape_coder.display import get_tool_tracker, get_conversation_tracker
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
+from grape_coder.nodes.noinput import NoInputGraphNode
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -15,7 +17,7 @@ from grape_coder.tools.work_path import (
 )
 
 
-def create_js_agent(work_path: str) -> Agent:
+def create_js_agent(work_path: str) -> MultiAgentBase:
     """Create an agent for creating reusable JavaScript components"""
 
     # Set work_path for tools
@@ -86,7 +88,7 @@ DELIVERABLES & QUALITY:
 
 Always produce production-ready, well-documented, and testable JavaScript code that integrates cleanly with the rest of the multi-agent workflow.
 """
-    return Agent(
+    agent = Agent(
         model=model,
         tools=[
             list_files_js,
@@ -98,8 +100,13 @@ Always produce production-ready, well-documented, and testable JavaScript code t
         system_prompt=system_prompt,
         name=AgentIdentifier.GENERATE_JS,
         description=get_agent_description(AgentIdentifier.GENERATE_JS),
-        hooks=[get_tool_tracker(AgentIdentifier.GENERATE_JS), get_conversation_tracker(AgentIdentifier.GENERATE_JS)],
+        hooks=[
+            get_tool_tracker(AgentIdentifier.GENERATE_JS),
+            get_conversation_tracker(AgentIdentifier.GENERATE_JS),
+        ],
     )
+
+    return NoInputGraphNode(agent=agent)
 
 
 @tool

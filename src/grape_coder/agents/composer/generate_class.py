@@ -1,10 +1,12 @@
 import os
 
 from strands import Agent, tool
+from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
+from grape_coder.nodes.noinput import NoInputGraphNode
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -15,7 +17,7 @@ from grape_coder.tools.work_path import (
 )
 
 
-def create_class_agent(work_path: str) -> Agent:
+def create_class_agent(work_path: str) -> MultiAgentBase:
     """Create an agent for creating reusable CSS classes and HTML components"""
 
     # Set work_path for tools
@@ -90,7 +92,8 @@ EXISTING MAIN CSS FILE:
 
 Always output clean, well-documented, production-ready CSS code.
 """
-    return Agent(
+
+    agent = Agent(
         model=model,
         tools=[
             list_files_css,
@@ -107,6 +110,8 @@ Always output clean, well-documented, production-ready CSS code.
             get_conversation_tracker(AgentIdentifier.GENERATE_CLASS),
         ],
     )
+
+    return NoInputGraphNode(agent=agent)
 
 
 @tool
