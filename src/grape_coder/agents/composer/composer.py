@@ -57,9 +57,9 @@ def build_composer(work_path: str):
     js_agent = create_js_agent(work_path)
     text_agent = create_text_agent(work_path)
     svg_agent = create_svg_agent(work_path)
-    code_agent = create_code_agent(work_path)
+    code_agent = create_code_agent(work_path, AgentIdentifier.CODE)
     review_agent = create_review_agent(work_path)
-    code_agent_after_review = create_code_agent(work_path)
+    code_agent_after_review = create_code_agent(work_path, code_agent_after_review_id)
 
     # Create task filtering nodes
     class_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.GENERATE_CLASS)
