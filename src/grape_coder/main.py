@@ -1,14 +1,15 @@
 import importlib.metadata
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Optional
 
 import typer
 from rich.console import Console
 
-from grape_coder.agents.todo import create_todo_generator_agent
 from grape_coder import set_debug_mode
+from grape_coder.agents.todo import create_todo_generator_agent
 
 from .agents.composer import build_composer
 from .agents.mono_agent import create_mono_agent
@@ -155,7 +156,9 @@ def code(
     path: str = typer.Argument(
         ".", help="Path to work in (default: current directory)"
     ),
-    debug: bool = typer.Option(False, "--debug", help="Enable debug mode with verbose output"),
+    debug: bool = typer.Option(
+        False, "--debug", help="Enable debug mode with verbose output"
+    ),
 ):
     """Start an interactive code session with file system tools."""
 
@@ -171,6 +174,24 @@ def code(
     if not work_path.exists():
         console.print(f"[red]Error: Path '{path}' does not exist[/red]")
         raise typer.Exit(1)
+
+    # Copy templates folder if target directory is empty
+    templates_dir = Path(os.path.join(os.path.dirname(__file__), "templates")).resolve()
+    if templates_dir.exists():
+        # Check if work_path is empty, ignoring hidden files like .DS_Store
+        if not any(
+            item for item in work_path.iterdir() if not item.name.startswith(".")
+        ):  # if work_path is empty (ignoring hidden files)
+            try:
+                shutil.copytree(templates_dir, work_path, dirs_exist_ok=True)
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning: Could not copy templates: {str(e)}[/yellow]"
+                )
+        else:
+            console.print(
+                "[yellow]Templates folder already exists, skipping copy[/yellow]"
+            )
 
     # Change to the target directory
     original_cwd = os.getcwd()
