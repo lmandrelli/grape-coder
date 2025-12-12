@@ -92,17 +92,17 @@ AGENT_TOOL_LIMITS: Dict[AgentIdentifier, int] = {
     AgentIdentifier.RESEARCHER: 30,
     AgentIdentifier.TODO: 30,
     AgentIdentifier.ORCHESTRATOR: 30,
-    AgentIdentifier.GENERATE_CLASS: 50,
-    AgentIdentifier.GENERATE_JS: 50,
-    AgentIdentifier.TEXT: 50,
-    AgentIdentifier.SVG: 50,
-    AgentIdentifier.CODE: 70,
+    AgentIdentifier.GENERATE_CLASS: 30,
+    AgentIdentifier.GENERATE_JS: 30,
+    AgentIdentifier.TEXT: 30,
+    AgentIdentifier.SVG: 30,
+    AgentIdentifier.CODE: 50,
     AgentIdentifier.MONO_AGENT: 150,
     AgentIdentifier.REVIEW: 50,
-    AgentIdentifier.CODE_AFTER_REVIEW: 70,
+    AgentIdentifier.CODE_AFTER_REVIEW: 50,
 }
 
 
 def get_agent_tool_limit(agent_id: AgentIdentifier) -> int:
     """Get tool limit for a specific agent identifier."""
-    return AGENT_TOOL_LIMITS.get(agent_id, 2)
+    return AGENT_TOOL_LIMITS.get(agent_id, 30)
