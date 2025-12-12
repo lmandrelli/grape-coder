@@ -5,7 +5,12 @@ from rich.table import Table
 from prompt_toolkit import prompt
 from prompt_toolkit.validation import Validator
 
-from grape_coder.config.models import ProviderConfig, AgentConfig, GrapeCoderConfig, ProviderType
+from grape_coder.config.models import (
+    ProviderConfig,
+    AgentConfig,
+    GrapeCoderConfig,
+    ProviderType,
+)
 from grape_coder.config.manager import get_config_manager, ConfigManager
 from grape_coder.config.litellm_integration import ProviderFactory
 from grape_coder.agents.identifiers import get_agent_values
@@ -72,8 +77,7 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
 
 def show_config_status(config: GrapeCoderConfig) -> None:
     """Display current configuration status."""
-    console.print(
-        "\n[bold underline]Current Configuration Status:[/bold underline]")
+    console.print("\n[bold underline]Current Configuration Status:[/bold underline]")
 
     # Providers table
     providers_table = Table(title="Providers")
@@ -84,8 +88,7 @@ def show_config_status(config: GrapeCoderConfig) -> None:
     if config.providers:
         for name, provider_config in config.providers.items():
             base_url = provider_config.api_base_url or "Using default"
-            providers_table.add_row(
-                name, provider_config.provider.value, base_url)
+            providers_table.add_row(name, provider_config.provider.value, base_url)
     else:
         providers_table.add_row("No providers configured", "", "")
 
@@ -97,13 +100,27 @@ def show_config_status(config: GrapeCoderConfig) -> None:
     agents_table.add_column("Provider", style="magenta")
     agents_table.add_column("Model", style="green")
 
+    available_agents = get_agent_values()
     if config.agents:
-        for name, agent_config in config.agents.items():
-            agents_table.add_row(
-                name, agent_config.provider_ref, agent_config.model_name
-            )
+        for name in available_agents:
+            if name in config.agents:
+                agent_config = config.agents[name]
+                agents_table.add_row(
+                    name, agent_config.provider_ref, agent_config.model_name
+                )
+            else:
+                agents_table.add_row(
+                    f"{name} [red](missing)[/red]",
+                    "[red]Not configured[/red]",
+                    "[red]Not configured[/red]",
+                )
     else:
-        agents_table.add_row("No agents configured", "", "")
+        for name in available_agents:
+            agents_table.add_row(
+                f"{name} [red](missing)[/red]",
+                "[red]Not configured[/red]",
+                "[red]Not configured[/red]",
+            )
 
     console.print(agents_table)
 
@@ -125,8 +142,7 @@ def remove_provider(config: GrapeCoderConfig) -> None:
 
     choice = prompt(
         f"Select provider to remove (1-{len(provider_list)}): ",
-        validator=choice_validator(
-            [str(i) for i in range(1, len(provider_list) + 1)]),
+        validator=choice_validator([str(i) for i in range(1, len(provider_list) + 1)]),
     )
 
     provider_to_remove = provider_list[int(choice) - 1]
@@ -159,27 +175,27 @@ def map_models_to_agents(config: GrapeCoderConfig) -> None:
     console.print("\n[bold]Map Models to Agents[/bold]")
 
     if not config.providers:
-        console.print(
-            "[red]No providers configured. Add a provider first.[/red]")
+        console.print("[red]No providers configured. Add a provider first.[/red]")
         return
 
     # Define available agents directly
     available_agents = get_agent_values()
 
-    # Show available agents
+    # Show available agents with status
     console.print("\nAvailable agents:")
+    console.print("0. All")
     for i, agent in enumerate(available_agents, 1):
-        console.print(f"{i}. {agent}")
+        if agent in config.agents:
+            console.print(f"{i}. {agent}")
+        else:
+            console.print(f"{i}. {agent} [red](missing)[/red]")
 
     # Select agent
+    max_choice = len(available_agents)
     agent_choice = prompt(
-        f"Select agent to configure (1-{len(available_agents)}): ",
-        validator=choice_validator(
-            [str(i) for i in range(1, len(available_agents) + 1)]
-        ),
+        f"Select agent to configure (0-{max_choice}): ",
+        validator=choice_validator([str(i) for i in range(0, max_choice + 1)]),
     )
-
-    selected_agent = available_agents[int(agent_choice) - 1]
 
     # Select provider
     console.print("\nAvailable providers:")
@@ -190,8 +206,7 @@ def map_models_to_agents(config: GrapeCoderConfig) -> None:
 
     provider_choice = prompt(
         f"Select provider (1-{len(provider_list)}): ",
-        validator=choice_validator(
-            [str(i) for i in range(1, len(provider_list) + 1)]),
+        validator=choice_validator([str(i) for i in range(1, len(provider_list) + 1)]),
     )
 
     selected_provider = provider_list[int(provider_choice) - 1]
@@ -220,15 +235,34 @@ def map_models_to_agents(config: GrapeCoderConfig) -> None:
         console.print("[red]Invalid model name format.[/red]")
         return
 
-    # Create or update agent config
+    # Create or update agent config(s)
     try:
         agent_config = AgentConfig(
             provider_ref=selected_provider, model_name=model_name
         )
-        config.agents[selected_agent] = agent_config
+
+        if agent_choice == "0":
+            # Apply to all agents
+            for agent in available_agents:
+                config.agents[agent] = agent_config
+            console.print(
+                f"[green]All agents mapped to {selected_provider}/{model_name} successfully.[/green]"
+            )
+        else:
+            # Apply to selected agent
+            selected_agent = available_agents[int(agent_choice) - 1]
+            config.agents[selected_agent] = agent_config
+            console.print(
+                f"[green]Agent '{selected_agent}' mapped to {selected_provider}/{model_name} successfully.[/green]"
+            )
+
+        # Save config after confirmation
+        config_manager = get_config_manager()
+        config_manager.save_config(config)
         console.print(
-            f"[green]Agent '{selected_agent}' mapped to {selected_provider}/{model_name} successfully.[/green]"
+            f"[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
         )
+
     except Exception as e:
         console.print(f"[red]Error creating agent mapping: {e}[/red]")
 
