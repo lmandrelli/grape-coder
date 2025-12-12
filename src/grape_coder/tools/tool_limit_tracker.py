@@ -81,7 +81,6 @@ def increment_tool_count(agent_name: str) -> None:
     Args:
         agent_name: Name of the agent that used a tool
     """
-    print("[Debug] Incrementing tool count for agent:", agent_name)
     _tool_tracker.increment_tool_count(agent_name)
 
 
@@ -94,7 +93,6 @@ def has_hit_limit(agent_name: str) -> bool:
     Returns:
         True if the agent has hit or exceeded its limit, False otherwise
     """
-    print("[Debug] Checking tool limit for agent:", agent_name)
     return _tool_tracker.has_hit_limit(agent_name)
 
 
@@ -107,7 +105,6 @@ def get_tool_count(agent_name: str) -> int:
     Returns:
         Current tool count for the agent
     """
-    print("[Debug] Getting tool count for agent:", agent_name)
     return _tool_tracker.get_tool_count(agent_name)
 
 
@@ -117,11 +114,9 @@ def reset_agent_count(agent_name: str) -> None:
     Args:
         agent_name: Name of the agent to reset
     """
-    print("[Debug] Resetting tool count for agent:", agent_name)
     _tool_tracker.reset_agent_count(agent_name)
 
 
 def reset_all_counts() -> None:
     """Reset all tool counts."""
-    print("[Debug] Resetting all tool counts")
     _tool_tracker.reset_all_counts()

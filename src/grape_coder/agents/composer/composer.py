@@ -12,7 +12,7 @@ from .reviewer import create_review_agent
 from .svg import create_svg_agent
 from .text import create_text_agent
 
-code_agent_after_review_id = AgentIdentifier.CODE + "_after_review"
+code_agent_after_review_id = AgentIdentifier.CODE_AFTER_REVIEW
 
 
 def all_parallel_agents_complete(required_nodes: list[str]):

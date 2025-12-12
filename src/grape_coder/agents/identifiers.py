@@ -32,6 +32,7 @@ class AgentIdentifier(str, Enum):
 
     # Code agent
     CODE = "code_agent"
+    CODE_AFTER_REVIEW = "code_after_review_agent"
 
     # Mono-agent
     MONO_AGENT = "mono_agent"
@@ -55,6 +56,7 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
     AgentIdentifier.REVIEW: "Code review and quality assurance agent",
+    AgentIdentifier.CODE_AFTER_REVIEW: "Code agent that acts after review feedback",
 }
 
 
@@ -84,19 +86,20 @@ def get_agent_display_list() -> List[str]:
 
 # Tool limits for each agent
 AGENT_TOOL_LIMITS: Dict[AgentIdentifier, int] = {
-    AgentIdentifier.ARCHITECT: 2,
-    AgentIdentifier.DESIGNER: 2,
-    AgentIdentifier.CONTENT_PLANNER: 2,
-    AgentIdentifier.RESEARCHER: 2,
-    AgentIdentifier.TODO: 2,
-    AgentIdentifier.ORCHESTRATOR: 2,
-    AgentIdentifier.GENERATE_CLASS: 2,
-    AgentIdentifier.GENERATE_JS: 2,
-    AgentIdentifier.TEXT: 2,
-    AgentIdentifier.SVG: 2,
-    AgentIdentifier.CODE: 2,
-    AgentIdentifier.MONO_AGENT: 2,
-    AgentIdentifier.REVIEW: 2,
+    AgentIdentifier.ARCHITECT: 30,
+    AgentIdentifier.DESIGNER: 30,
+    AgentIdentifier.CONTENT_PLANNER: 30,
+    AgentIdentifier.RESEARCHER: 30,
+    AgentIdentifier.TODO: 30,
+    AgentIdentifier.ORCHESTRATOR: 30,
+    AgentIdentifier.GENERATE_CLASS: 50,
+    AgentIdentifier.GENERATE_JS: 50,
+    AgentIdentifier.TEXT: 50,
+    AgentIdentifier.SVG: 50,
+    AgentIdentifier.CODE: 70,
+    AgentIdentifier.MONO_AGENT: 150,
+    AgentIdentifier.REVIEW: 50,
+    AgentIdentifier.CODE_AFTER_REVIEW: 70,
 }
 
 
