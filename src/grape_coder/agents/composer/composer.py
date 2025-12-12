@@ -12,7 +12,7 @@ from .reviewer import create_review_agent
 from .svg import create_svg_agent
 from .text import create_text_agent
 
-code_agent_after_review_id = AgentIdentifier.CODE + "_after_review"
+code_agent_after_review_id = AgentIdentifier.CODE_AFTER_REVIEW
 
 
 def all_parallel_agents_complete(required_nodes: list[str]):
@@ -57,9 +57,9 @@ def build_composer(work_path: str):
     js_agent = create_js_agent(work_path)
     text_agent = create_text_agent(work_path)
     svg_agent = create_svg_agent(work_path)
-    code_agent = create_code_agent(work_path)
+    code_agent = create_code_agent(work_path, AgentIdentifier.CODE)
     review_agent = create_review_agent(work_path)
-    code_agent_after_review = create_code_agent(work_path)
+    code_agent_after_review = create_code_agent(work_path, code_agent_after_review_id)
 
     # Create task filtering nodes
     class_filter = TaskFilteringNode(agent_xml_tag=AgentIdentifier.GENERATE_CLASS)
@@ -126,7 +126,7 @@ def build_composer(work_path: str):
     builder.set_entry_point(AgentIdentifier.ORCHESTRATOR)
 
     # Configure execution limits
-    builder.set_execution_timeout(1200)  # 20 minutes max
+    builder.set_execution_timeout(3600)  # 1 heure max
 
     # Build and return the graph
     return builder.build()

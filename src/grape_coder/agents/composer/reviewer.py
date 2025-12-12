@@ -10,6 +10,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_review_agent(work_path: str) -> Agent:
@@ -97,5 +98,6 @@ def create_review_agent(work_path: str) -> Agent:
         hooks=[
             get_tool_tracker(AgentIdentifier.REVIEW),
             get_conversation_tracker(AgentIdentifier.REVIEW),
+            get_tool_limit_hook(AgentIdentifier.REVIEW),
         ],
     )

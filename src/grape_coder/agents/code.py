@@ -20,9 +20,10 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
-def create_code_agent(work_path: str) -> MultiAgentBase:
+def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBase:
     """Create a code agent with file system tools"""
 
     # Set work_path for tools
@@ -30,7 +31,7 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
 
     # Get model using the config manager
     config_manager = get_config_manager()
-    model = cast(Model, config_manager.get_model(AgentIdentifier.CODE))
+    model = cast(Model, config_manager.get_model(agent_id))
 
     # Create agent with file system tools
     system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
@@ -78,11 +79,12 @@ def create_code_agent(work_path: str) -> MultiAgentBase:
             fetch_url,
         ],
         system_prompt=system_prompt,
-        name=AgentIdentifier.CODE,
-        description=get_agent_description(AgentIdentifier.CODE),
+        name=agent_id,
+        description=get_agent_description(agent_id),
         hooks=[
-            get_tool_tracker(AgentIdentifier.CODE),
-            get_conversation_tracker(AgentIdentifier.CODE),
+            get_tool_tracker(agent_id),
+            get_conversation_tracker(agent_id),
+            get_tool_limit_hook(agent_id),
         ],
     )
 

@@ -1,5 +1,6 @@
 import os
 import re
+from webbrowser import get
 import xml.etree.ElementTree as ET
 
 from strands import Agent, tool
@@ -17,6 +18,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_svg_agent(work_path: str) -> MultiAgentBase:
@@ -97,6 +99,7 @@ Always output clean, well-documented, production-ready SVG code that passes vali
         hooks=[
             get_tool_tracker(AgentIdentifier.SVG),
             get_conversation_tracker(AgentIdentifier.SVG),
+            get_tool_limit_hook(AgentIdentifier.SVG)
         ],
     )
 

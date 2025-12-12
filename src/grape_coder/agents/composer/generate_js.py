@@ -1,4 +1,5 @@
 import os
+from webbrowser import get
 
 from strands import Agent, tool
 from strands.multiagent.base import MultiAgentBase
@@ -15,6 +16,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_js_agent(work_path: str) -> MultiAgentBase:
@@ -103,6 +105,7 @@ Always produce production-ready, well-documented, and testable JavaScript code t
         hooks=[
             get_tool_tracker(AgentIdentifier.GENERATE_JS),
             get_conversation_tracker(AgentIdentifier.GENERATE_JS),
+            get_tool_limit_hook(AgentIdentifier.GENERATE_JS)
         ],
     )
 

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import List
 
 from strands.tools import tool
 
@@ -21,6 +22,7 @@ def list_files(path: str = ".", recursive: bool = False) -> str:
         path: Path to list (default: current directory)
         recursive: List files recursively (default: false)
     """
+
     try:
         # Resolve path relative to work_path
         if not os.path.isabs(path):
@@ -31,7 +33,7 @@ def list_files(path: str = ".", recursive: bool = False) -> str:
             return f"Error: Path '{path}' does not exist"
 
         if recursive:
-            files = []
+            files: List[str] = []
             for item in path_obj.rglob("*"):
                 if item.is_file():
                     files.append(f"  {item.relative_to(path_obj)}")
@@ -39,7 +41,7 @@ def list_files(path: str = ".", recursive: bool = False) -> str:
                     files.append(f"📁 {item.relative_to(path_obj)}/")
             return f"Files in '{path}' (recursive):\n" + "\n".join(sorted(files))
         else:
-            items = []
+            items: List[str] = []
             for item in path_obj.iterdir():
                 if item.is_file():
                     items.append(f"  {item.name}")
@@ -57,6 +59,7 @@ def read_file(path: str) -> str:
     Args:
         path: Path to the file to read
     """
+
     try:
         # Resolve path relative to work_path
         if not os.path.isabs(path):
@@ -86,11 +89,12 @@ def edit_file(path: str, content: str) -> str:
         path: Path to the file to edit or create
         content: Content to write to the file
     """
+
     try:
         # Check if the path points to a directory
         if os.path.isdir(path):
             return f"Error: '{path}' is a directory, not a file. Please specify a file path with an extension. To create a file in a folder, use 'folder/file.html' format."
-        
+
         # Resolve path relative to work_path
         if not os.path.isabs(path):
             path = os.path.join(_work_path, path)
@@ -118,6 +122,7 @@ def grep_files(pattern: str, path: str = ".", file_pattern: str = "*") -> str:
         path: Path to search in (default: current directory)
         file_pattern: File pattern to match (default: *)
     """
+
     try:
         import re
 
@@ -129,7 +134,7 @@ def grep_files(pattern: str, path: str = ".", file_pattern: str = "*") -> str:
         if not path_obj.exists():
             return f"Error: Path '{path}' does not exist"
 
-        results = []
+        results: List[str] = []
         regex = re.compile(pattern, re.IGNORECASE)
 
         # Find files matching the pattern
@@ -174,6 +179,7 @@ def glob_files(pattern: str, path: str = ".") -> str:
         pattern: Glob pattern to match files (e.g., "*.py", "**/*.js", "src/**/*.ts")
         path: Path to search in (default: current directory)
     """
+
     try:
         # Resolve path relative to work_path
         if not os.path.isabs(path):
@@ -190,7 +196,7 @@ def glob_files(pattern: str, path: str = ".") -> str:
             return f"No files found matching pattern '{pattern}' in '{path}'"
 
         # Sort results and format output
-        results = []
+        results: List[str] = []
         for match in sorted(matches):
             if match.is_file():
                 results.append(f"  {match.relative_to(path_obj)}")

@@ -9,6 +9,7 @@ from grape_coder.tools.work_path import (
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_tool_tracker, get_conversation_tracker
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_designer_agent(work_path: str) -> Agent:
@@ -67,5 +68,5 @@ Provide detailed design specifications that can be implemented with vanilla HTML
         system_prompt=system_prompt,
         name=AgentIdentifier.DESIGNER,
         description=get_agent_description(AgentIdentifier.DESIGNER),
-        hooks=[get_tool_tracker(AgentIdentifier.DESIGNER), get_conversation_tracker(AgentIdentifier.DESIGNER)],
+        hooks=[get_tool_tracker(AgentIdentifier.DESIGNER), get_conversation_tracker(AgentIdentifier.DESIGNER), get_tool_limit_hook(AgentIdentifier.DESIGNER)],
     )
