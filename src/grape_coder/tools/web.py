@@ -8,6 +8,7 @@ def fetch_url(url: str) -> str:
     Args:
         url: URL to fetch content from
     """
+
     import urllib.error
     import urllib.request
 

@@ -80,3 +80,26 @@ def get_agent_display_list() -> List[str]:
         description = get_agent_description(agent)
         result.append(f"{agent.value}: {description}")
     return result
+
+
+# Tool limits for each agent
+AGENT_TOOL_LIMITS: Dict[AgentIdentifier, int] = {
+    AgentIdentifier.ARCHITECT: 2,
+    AgentIdentifier.DESIGNER: 2,
+    AgentIdentifier.CONTENT_PLANNER: 2,
+    AgentIdentifier.RESEARCHER: 2,
+    AgentIdentifier.TODO: 2,
+    AgentIdentifier.ORCHESTRATOR: 2,
+    AgentIdentifier.GENERATE_CLASS: 2,
+    AgentIdentifier.GENERATE_JS: 2,
+    AgentIdentifier.TEXT: 2,
+    AgentIdentifier.SVG: 2,
+    AgentIdentifier.CODE: 2,
+    AgentIdentifier.MONO_AGENT: 2,
+    AgentIdentifier.REVIEW: 2,
+}
+
+
+def get_agent_tool_limit(agent_id: AgentIdentifier) -> int:
+    """Get tool limit for a specific agent identifier."""
+    return AGENT_TOOL_LIMITS.get(agent_id, 2)

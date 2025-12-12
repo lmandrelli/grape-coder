@@ -8,6 +8,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_todo_generator_agent(work_path: str) -> Agent:
@@ -45,5 +46,5 @@ Format your output as a numbered list of specific, actionable todo items that th
         system_prompt=system_prompt,
         name=AgentIdentifier.TODO,
         description=get_agent_description(AgentIdentifier.TODO),
-        hooks=[get_tool_tracker(AgentIdentifier.TODO), get_conversation_tracker(AgentIdentifier.TODO)],
+        hooks=[get_tool_tracker(AgentIdentifier.TODO), get_conversation_tracker(AgentIdentifier.TODO), get_tool_limit_hook(AgentIdentifier.TODO)],
     )

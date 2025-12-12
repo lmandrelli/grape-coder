@@ -1,4 +1,5 @@
 import os
+from webbrowser import get
 
 from strands import Agent, tool
 
@@ -13,6 +14,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_js_agent(work_path: str) -> Agent:
@@ -98,7 +100,7 @@ Always produce production-ready, well-documented, and testable JavaScript code t
         system_prompt=system_prompt,
         name=AgentIdentifier.GENERATE_JS,
         description=get_agent_description(AgentIdentifier.GENERATE_JS),
-        hooks=[get_tool_tracker(AgentIdentifier.GENERATE_JS), get_conversation_tracker(AgentIdentifier.GENERATE_JS)],
+        hooks=[get_tool_tracker(AgentIdentifier.GENERATE_JS), get_conversation_tracker(AgentIdentifier.GENERATE_JS), get_tool_limit_hook(AgentIdentifier.GENERATE_JS)],
     )
 
 

@@ -10,6 +10,7 @@ from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
+from grape_coder.display import get_conversation_tracker, get_tool_tracker
 from grape_coder.tools.web import fetch_url
 from grape_coder.tools.work_path import (
     edit_file,
@@ -19,6 +20,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_mono_agent(work_path: str) -> MultiAgentBase:
@@ -66,6 +68,11 @@ The workspace exploration will be automatically provided to you at the start.
         system_prompt=system_prompt,
         name=AgentIdentifier.MONO_AGENT,
         description=get_agent_description(AgentIdentifier.MONO_AGENT),
+        hooks=[
+            get_tool_tracker(AgentIdentifier.MONO_AGENT),
+            get_conversation_tracker(AgentIdentifier.MONO_AGENT),
+            get_tool_limit_hook(AgentIdentifier.MONO_AGENT),
+        ],
     )
 
     return MonoAgentNode(agent=agent, work_path=work_path)

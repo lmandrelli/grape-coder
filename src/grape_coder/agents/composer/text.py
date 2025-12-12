@@ -13,6 +13,7 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
 def create_text_agent(work_path: str) -> Agent:
@@ -94,7 +95,7 @@ Always match the brand voice and target audience specified in your tasks.
         system_prompt=system_prompt,
         name=AgentIdentifier.TEXT,
         description=get_agent_description(AgentIdentifier.TEXT),
-        hooks=[get_tool_tracker(AgentIdentifier.TEXT), get_conversation_tracker(AgentIdentifier.TEXT)],
+        hooks=[get_tool_tracker(AgentIdentifier.TEXT), get_conversation_tracker(AgentIdentifier.TEXT), get_tool_limit_hook(AgentIdentifier.TEXT)],
     )
 
 
