@@ -43,18 +43,6 @@ def needs_revision(state: GraphState) -> bool:
             return not agent_result.state.get("approved", False)
     return True  # Default to needing revision if we can't determine
 
-def is_approved(state: GraphState) -> bool:
-    """Check if the quality checker approved the code."""
-    checker_result = state.results.get("quality_checker")
-    if not checker_result:
-        return False
-    multi_result = checker_result.result
-    if hasattr(multi_result, "results") and "quality_checker" in multi_result.results:
-        agent_result = multi_result.results["quality_checker"].result
-        if hasattr(agent_result, "state"):
-            return agent_result.state.get("approved", False)
-    return False
-
 
 def build_composer(work_path: str):
     """

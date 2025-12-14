@@ -56,6 +56,22 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
     Maybe some files are incomplete, create new one or rewrite them to add missing logic. Especially style files may need additional classes to style the page correctly.
     Your goal is to produce a functional, well-structured website that integrates all the prepared components.
 
+    REVIEW FEEDBACK MODE:
+    Sometimes you will receive REVIEW FEEDBACK from a code reviewer agent instead of initial tasks.
+    This feedback will be structured with categories like:
+    - BLOCKING ISSUES: Critical problems that must be fixed
+    - Category scores (e.g., PROMPT_COMPLIANCE, CODE_VALIDITY, RESPONSIVENESS, etc.)
+    - Specific remarks for each category
+
+    When you receive review feedback:
+    1. Read the feedback carefully - it contains specific issues found by the reviewer
+    2. Focus on fixing the issues mentioned, especially blocking issues and low-scoring categories
+    3. Re-read the affected files before making changes
+    4. Make the necessary corrections to address each remark
+    5. Ensure your fixes don't break other functionality
+    
+    Your goal in review mode is to improve the code quality until all categories score >= 18/20 and no blocking issues remain.
+
     Available tools:
     - list_files: List files and directories in a path (automatically called at startup)
     - read_file: Read contents of one or more files
