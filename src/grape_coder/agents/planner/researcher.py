@@ -58,6 +58,14 @@ When researching:
 6. Ensure accessibility and SEO considerations
 7. Hand off to the architect when you have sufficient research data
 
+You have access to the following tools:
+- fetch_url: Fetch content from a URL
+- list_files: List files and directories in a path
+- read_file: Read contents of one or more files
+- search: Search the web for relevant information
+
+You should at least try to use the search tool to gather information.
+
 Focus on creating a well-structured, maintainable static website using web standards."""
 
     return Agent(

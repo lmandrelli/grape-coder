@@ -136,7 +136,14 @@ def mono_agent(
 
         # Create and run the mono-agent
         mono_agent = create_mono_agent(str(work_path))
-        result = mono_agent(user_input)
+        
+        prompt = f"""
+        This is the task assigned to you:
+        {user_input}
+        You can't ask the user for more information. You must complete the task with the information you have.
+        """
+        
+        result = mono_agent(prompt)
 
         if result.status.value == "completed":
             console.print("[green]✓ Task completed successfully[/green]")
@@ -216,6 +223,11 @@ def code(
 
                 if not user_input.strip():
                     continue
+                
+                global_system_prompt = """
+                You are grape-coder, an AI multi-agent system. Each agent has a specialized role and should strictly limit itself to that assigned role.
+                The user will provide you a high-level prompt for website development. You cannot ask the user for more information. You must complete the task with the information you have.
+                """
 
                 console.print("[bold green]Agent:[/bold green]")
 
@@ -224,8 +236,8 @@ def code(
                 try:
                     planner = build_planner(str(work_path))
 
-                    planner_prompt = f"Create a comprehensive website development plan for: {user_input}"
-                    planner_result = planner(planner_prompt)
+                    planner_prompt = "Create a comprehensive website development plan"
+                    planner_result = planner(f"{global_system_prompt}\n{planner_prompt}\nUSER TASK: {user_input}")
 
                     # Extract the complete plan from the swarm
                     complete_plan = ""
@@ -238,9 +250,11 @@ def code(
                     todo_generator = create_todo_generator_agent(str(work_path))
 
                     todo_prompt = f"Create a structured todo list from this website development plan:\n{complete_plan}"
-                    todo_result = todo_generator(todo_prompt)
+                    todo_result = todo_generator(f"{global_system_prompt}\n{todo_prompt}")
 
-                    graph_input = f"Execute the following todo list for website development:\n{todo_result}"
+                    graph_input = f"""
+                    Execute the following todo list for website development:\n{todo_result}
+                    """
 
                 except Exception as e:
                     console.print(f"[bold red]Swarm error: {str(e)}[/bold red]")
@@ -249,7 +263,10 @@ def code(
                     )
 
                     # Fallback to direct code execution
-                    graph_input = user_input
+                    graph_input = f"""
+                    {global_system_prompt}
+                    USER TASK: {user_input}
+                    """
 
                 console.print("\n[green]📚 Composer[/green]")
 
