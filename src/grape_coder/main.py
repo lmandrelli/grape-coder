@@ -251,12 +251,17 @@ def code(
 
                     todo_generator = create_todo_generator_agent(str(work_path))
 
-                    todo_prompt = f"Create a structured todo list from this website development plan:\n{complete_plan}"
+                    todo_prompt = f"""Create a structured development plan based on this brainstorming :
+                    {complete_plan}
+                    
+                    Output the plan as a summarized context will all information that are important to execute the plan, such as the site design, pages, type of target, global content ideas.
+                    Then, output a TODO list with all the development steps required to complete the website."""
+                    
                     todo_result = todo_generator(f"{global_system_prompt}\n{todo_prompt}")
 
                     graph_input = f"""{global_system_prompt}
-                    Execute the following todo list for website development:\n{todo_result}
-                    """
+                    Execute the following development plan:
+                    {todo_result}"""
 
                 except Exception as e:
                     console.print(f"[bold red]Swarm error: {str(e)}[/bold red]")
