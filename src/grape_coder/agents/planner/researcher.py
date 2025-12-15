@@ -66,7 +66,9 @@ You have access to the following tools:
 
 You should at least try to use the search tool to gather information.
 
-Focus on creating a well-structured, maintainable static website using web standards."""
+Focus on creating a well-structured, maintainable static website using web standards.
+
+Do not forget to handoff to the other agents when you have sufficient research data. Don't try to do the plan only by yourself."""
 
     return Agent(
         model=model,
