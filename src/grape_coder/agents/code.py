@@ -39,9 +39,8 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
     CONTEXT:
     You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
     - CSS/styling agents have created style files (.css) for components
-    - Content agents have generated text files (.txt) with copy and content
+    - Content agents have generated markdown files (.md) with pages content
     - Graphics agents have created SVG files (.svg) with icons, logos, and illustrations
-    - Additional agents may have created other web resources (images, data files, etc.)
 
     WORKFLOW:
     You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
@@ -94,11 +93,11 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
 
 @tool
 def edit_file_code(path: str, content: str) -> str:
-    """Edit or create a web file. Only .html, .js, .css, and .md files are allowed."""
+    """Edit or create a web file. Only .html, .js, .css, .json and .md files are allowed."""
     # Validate that the file has an allowed extension
-    allowed_extensions = (".html", ".js", ".css", ".md")
+    allowed_extensions = (".html", ".js", ".css", ".json", ".md")
     if not path.endswith(allowed_extensions):
-        return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .md. The path '{path}' does not have an allowed extension."
+        return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .json, .md. The path '{path}' does not have an allowed extension."
 
     return edit_file(path, content)
 

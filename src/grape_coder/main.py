@@ -226,7 +226,8 @@ def code(
                 
                 global_system_prompt = """
                 You are grape-coder, an AI multi-agent system. Each agent has a specialized role and should strictly limit itself to that assigned role.
-                The user will provide you a high-level prompt for website development. You cannot ask the user for more information. You must complete the task with the information you have.
+                The website must be developed using best practices, it will be writen with HTML, CSS and Vanilla JavaScript only. If a file or ressource fails to be created, do not try to reference it later.
+                You can only create svg files for graphics, you can use svg to do placeholders for images and videos.
                 """
 
                 console.print("[bold green]Agent:[/bold green]")
@@ -236,7 +237,8 @@ def code(
                 try:
                     planner = build_planner(str(work_path))
 
-                    planner_prompt = "Create a comprehensive website development plan"
+                    planner_prompt = """Create a comprehensive website development plan based on the user's task. Break down the plan into clear, manageable steps.
+                    The user will provide you a high-level prompt for website development. You cannot ask the user for more information. You must complete the task with the information you have."""
                     planner_result = planner(f"{global_system_prompt}\n{planner_prompt}\nUSER TASK: {user_input}")
 
                     # Extract the complete plan from the swarm
@@ -252,7 +254,7 @@ def code(
                     todo_prompt = f"Create a structured todo list from this website development plan:\n{complete_plan}"
                     todo_result = todo_generator(f"{global_system_prompt}\n{todo_prompt}")
 
-                    graph_input = f"""
+                    graph_input = f"""{global_system_prompt}
                     Execute the following todo list for website development:\n{todo_result}
                     """
 
