@@ -19,8 +19,8 @@ def build_planner(work_path: str):
         entry_point=researcher,  # Start with researcher
         max_handoffs=10,
         max_iterations=10,
-        execution_timeout=600,  # 10 minutes
-        node_timeout=120.0,  # 2 minutes per agent
+        execution_timeout=1200,  # 20 minutes
+        node_timeout=300,  # 5 minutes per agent
         repetitive_handoff_detection_window=3,
         repetitive_handoff_min_unique_agents=2,
     )
