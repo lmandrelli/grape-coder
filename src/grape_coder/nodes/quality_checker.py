@@ -36,7 +36,7 @@ class QualityChecker(MultiAgentBase):
         The reviewer node stores the parsed ReviewResult in the agent result's state.
         """
         # Import here to avoid circular imports
-        from grape_coder.agents.composer.review_validator import (
+        from grape_coder.agents.composer.reviewer import (
             ReviewResult,
             parse_review_xml,
             extract_review_xml,
