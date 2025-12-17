@@ -151,7 +151,7 @@ graph TD
         SVGFilter --> SVGAgent
         TextFilter --> TextAgent
 
-        ClassAgent & JSAgent & SVGAgent & TextAgent & CodeFilter -.->|wait for all| CodeAgent
+        ClassAgent & JSAgent & CodeFilter & SVGAgent & TextAgent -.->|wait for all| CodeAgent
 
         %% Review loop
         CodeAgent --> ReviewAgent
