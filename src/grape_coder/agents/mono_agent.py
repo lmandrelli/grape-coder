@@ -51,6 +51,7 @@ Available tools:
 - grep_files: Search for patterns in files
 - glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL
+- search: Search the web for relevant information
 
 The workspace exploration will be automatically provided to you at the start.
 """

@@ -58,7 +58,17 @@ When researching:
 6. Ensure accessibility and SEO considerations
 7. Hand off to the architect when you have sufficient research data
 
-Focus on creating a well-structured, maintainable static website using web standards."""
+You have access to the following tools:
+- fetch_url: Fetch content from a URL
+- list_files: List files and directories in a path
+- read_file: Read contents of one or more files
+- search: Search the web for relevant information
+
+You should at least try to use the search tool to gather information.
+
+Focus on creating a well-structured, maintainable static website using web standards.
+
+Do not forget to handoff to the other agents when you have sufficient research data. Don't try to do the plan only by yourself."""
 
     return Agent(
         model=model,
