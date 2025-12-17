@@ -266,6 +266,10 @@ def code(
                     todo_result = todo_generator(f"{global_system_prompt}\n{todo_prompt}")
 
                     graph_input = f"""{global_system_prompt}
+                    
+                    ORIGINAL USER REQUEST:
+                    {user_input}
+                    
                     Execute the following development plan:
                     {todo_result}"""
 

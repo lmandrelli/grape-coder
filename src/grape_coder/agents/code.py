@@ -109,11 +109,11 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
 
 @tool
 def edit_file_code(path: str, content: str) -> str:
-    """Edit or create a web file. Only .html, .js, .css, .json and .md files are allowed."""
+    """Edit or create a web file. Only .html, .js, .css, .svg, .json and .md files are allowed."""
     # Validate that the file has an allowed extension
-    allowed_extensions = (".html", ".js", ".css", ".json", ".md")
+    allowed_extensions = (".html", ".js", ".css", ".svg", ".json", ".md")
     if not path.endswith(allowed_extensions):
-        return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .json, .md. The path '{path}' does not have an allowed extension."
+        return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .svg, .json, .md. The path '{path}' does not have an allowed extension."
 
     return edit_file(path, content)
 
