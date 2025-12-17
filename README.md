@@ -66,14 +66,14 @@ The project is structured as follows:
 
 - `src/grape_coder/`: Main package source code.
   - `agents/`: Contains agent definitions (code, mono_agent, todo, etc.).
-  - `composer/`: Logic for the composer graph (orchestrator, reviewers, generators).
+    - `composer/`: Logic for the composer graph (orchestrator, reviewers, generators).
+    - `planner/`: Planner swarm agents (architect, designer, researcher, content planner).
   - `config/`: Configuration management (CLI, models, providers).
   - `display/`: UI and display utilities.
   - `nodes/`: Task filtering nodes.
-  - `planner/`: Planner swarm agents (architect, designer, researcher, content planner).
+  - `templates/`: File templates for code generation.
   - `tools/`: Utility tools (web, work_path).
 - `tests/`: Unit and integration tests.
-- `pyproject.toml`: Project configuration and dependencies.
 
 ### Agent Description
 
@@ -97,48 +97,95 @@ Grape Coder employs a variety of specialized agents, each with a specific role i
 
 ### Graph
 The graph below illustrates the multi-agent architecture of Grape Coder, highlighting two of its core components: the Planner Swarm, which handles project planning, and the Composer Graph, which orchestrates code generation based on the planned tasks.
+
 ```mermaid
 graph TD
-    User[User Input] --> PlannerSwarm --> TodoGenerator[Todo Generator] --> Orchestrator
-    
+    %% --- COLOR PALETTE ---
+    classDef planner fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000;
+    classDef filter fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef generator fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef orchestrator fill:#263238,stroke:#000,stroke-width:4px,color:#fff;
+    classDef userInput fill:#ffccbc,stroke:#d84315,stroke-width:2px;
+    classDef reviewer fill:#ffe0b2,stroke:#f57c00,stroke-width:2px;
+    classDef decision fill:#c8e6c9,stroke:#388e3c,stroke-width:2px;
+    classDef endNode fill:#000,stroke:#000,color:#fff;
+    classDef invisible fill:none,stroke:none,color:none;
+
+    %% --- MAIN GRAPH ---
+    User[User Input]:::userInput --> PlannerSwarm
+    PlannerSwarm --> TodoGenerator[Todo Generator]:::orchestrator 
+    TodoGenerator --> Orchestrator
+
     subgraph PlannerSwarm["Planner Swarm"]
+        direction TB
         Researcher[Researcher Agent]
         Architect[Architect Agent]
         Designer[Designer Agent]
         ContentPlanner[Content Planner Agent]
     end
-    
+
     subgraph ComposerGraph["Composer Graph"]
-        Orchestrator[Orchestrator Agent]
-        ClassFilter[filter_class_task]
-        JSFilter[filter_js_task]
-        SVGFilter[filter_svg_task]
-        TextFilter[filter_text_task]
-        CodeFilter[filter_code_task]
+        Orchestrator[Orchestrator Agent]:::orchestrator
+
+        %% Filters
+        ClassFilter[class_task_filter]
+        JSFilter[js_task_filter]
+        SVGFilter[svg_task_filter]
+        TextFilter[text_task_filter]
+        CodeFilter[code_task_filter]
+
+        %% Agents
         ClassAgent[Class Generator Agent]
         JSAgent[JavaScript Agent]
         SVGAgent[SVG Agent]
         TextAgent[Text Generator Agent]
         CodeAgent[Code Agent]
-        CodeAgent2[Code Agent]
         ReviewAgent[Review Agent]
-        
-        Orchestrator --> ClassFilter
-        Orchestrator --> JSFilter
-        Orchestrator --> SVGFilter
-        Orchestrator --> TextFilter
-        Orchestrator --> CodeFilter
+        QualityCheck{Quality Check}
+        FinalOutput((Final Output))
+
+        %% Links
+        Orchestrator --> ClassFilter & JSFilter & SVGFilter & TextFilter & CodeFilter
         ClassFilter --> ClassAgent
         JSFilter --> JSAgent
         SVGFilter --> SVGAgent
         TextFilter --> TextAgent
-        ClassAgent -.->|wait for all| CodeAgent
-        JSAgent -.->|wait for all| CodeAgent
-        CodeFilter -.->|wait for all| CodeAgent
-        SVGAgent -.->|wait for all| CodeAgent
-        TextAgent -.->|wait for all| CodeAgent
-        CodeAgent -.-> ReviewAgent
-        ReviewAgent -.-> CodeAgent2
-    end
-```
 
+        ClassAgent & JSAgent & SVGAgent & TextAgent & CodeFilter -.->|wait for all| CodeAgent
+
+        %% Review loop
+        CodeAgent --> ReviewAgent
+        ReviewAgent --> QualityCheck
+        QualityCheck -- "❌ Needs Revision" --> CodeAgent
+        QualityCheck -- "✅ Approved" --> FinalOutput
+    end
+
+    %% --- APPLY CLASSES ---
+    class Researcher,Architect,Designer,ContentPlanner planner;
+    class ClassFilter,JSFilter,SVGFilter,TextFilter,CodeFilter filter;
+    class ClassAgent,JSAgent,SVGAgent,TextAgent,CodeAgent generator;
+    class ReviewAgent reviewer;
+    class QualityCheck decision;
+    class FinalOutput endNode;
+
+    %% --- CENTERED LEGEND ---
+    %% Add invisible nodes to force centering
+    InvisibleLeft[ ]:::invisible
+    InvisibleRight[ ]:::invisible
+
+    subgraph Legend["Legend"]
+        direction LR
+        L1[Planner]:::planner
+        L2[Filter]:::filter
+        L3[Generator]:::generator
+        L5[Orchestration]:::orchestrator
+
+        L1 ~~~ L2
+        L3 ~~~ L5
+    end
+
+    %% Invisible links to enforce centered layout
+    FinalOutput ~~~ InvisibleLeft
+    InvisibleLeft ~~~ Legend
+    Legend ~~~ InvisibleRight
+```
