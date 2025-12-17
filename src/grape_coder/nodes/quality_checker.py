@@ -132,9 +132,9 @@ Scores: {score_summary}
 The code agent will receive this feedback to implement fixes."""
             feedback_for_code_agent = feedback
             
-            # Reset tool counts for agents that will be revisited in the loop
-            reset_agent_count(AgentIdentifier.CODE.value)
-            reset_agent_count(AgentIdentifier.REVIEW.value)
+        # Reset tool counts for agents that will be revisited in the loop
+        reset_agent_count(AgentIdentifier.CODE.value)
+        reset_agent_count(AgentIdentifier.REVIEW.value)
 
         agent_result = AgentResult(
             stop_reason="end_turn",
