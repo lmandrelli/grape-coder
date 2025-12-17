@@ -11,7 +11,7 @@ from strands.types.content import ContentBlock, Message
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
-from grape_coder.tools.web import fetch_url
+from grape_coder.tools.web import fetch_url, search
 from grape_coder.tools.work_path import (
     edit_file,
     glob_files,
@@ -77,6 +77,7 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
             grep_files,
             glob_files,
             fetch_url,
+            search,
         ],
         system_prompt=system_prompt,
         name=agent_id,

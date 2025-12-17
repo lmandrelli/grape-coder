@@ -1,6 +1,6 @@
 from strands import Agent
 
-from grape_coder.tools.web import fetch_url
+from grape_coder.tools.web import fetch_url, search
 from grape_coder.tools.work_path import (
     list_files,
     read_file,
@@ -62,7 +62,7 @@ Focus on creating a well-structured, maintainable static website using web stand
 
     return Agent(
         model=model,
-        tools=[fetch_url, list_files, read_file],
+        tools=[fetch_url, list_files, read_file, search],
         system_prompt=system_prompt,
         name=AgentIdentifier.RESEARCHER,
         description=get_agent_description(AgentIdentifier.RESEARCHER),
