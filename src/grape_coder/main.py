@@ -239,7 +239,8 @@ def code(
 
                     planner_prompt = """Create a comprehensive website development plan based on the user's task. Break down the plan into clear, manageable steps.
                     The user will provide you a high-level prompt for website development. You cannot ask the user for more information. You must complete the task with the information you have.
-                    You can handoff to other agents with the tool handoff_to_agent."""
+                    You can handoff to other agents with the tool handoff_to_agent.
+                    Do not write any code at this stage, it will be handled later."""
                     planner_result = planner(f"{global_system_prompt}\n{planner_prompt}\nUSER TASK: {user_input}")
 
                     # Extract the complete plan from the swarm
