@@ -149,8 +149,8 @@ def build_composer(work_path: str):
     builder.set_entry_point(AgentIdentifier.ORCHESTRATOR)
 
     # Configure execution limits for the loop
-    builder.set_execution_timeout(3600)  # 1 hour max
-    builder.set_max_node_executions(20)  # Prevent infinite loops - max 20 node executions total
+    builder.set_execution_timeout(7200)  # 2 hours max
+    builder.set_max_node_executions(15)  # Prevent infinite loops - max 20 node executions total
     builder.reset_on_revisit(True)  # Reset node state when revisiting in cycles
 
     # Build and return the graph
