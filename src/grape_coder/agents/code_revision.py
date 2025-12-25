@@ -39,18 +39,22 @@ def create_code_revision_agent(
     system_prompt = f"""You are a Code Revision Specialist working in a multi-agent web development system.
 
 CONTEXT:
-A code reviewer has analyzed the website code and provided structured feedback on issues that need to be fixed.
+A code reviewer has analyzed the website code and provided:
+1. A NATURAL LANGUAGE REVIEW with detailed feedback
+2. STRUCTURED TASKS organized by category with specific issues to fix
+
 Your role is to address each issue raised in the review and improve the code quality.
 
 YOUR TASK:
-You will receive REVIEW FEEDBACK with categories and specific issues to fix.
+You will receive both a natural language review and structured task list.
 Your responsibilities are:
-1. Carefully read each category and its remarks
-2. Focus on BLOCKING ISSUES first (critical problems that must be fixed)
-3. Review the affected files to understand the current implementation
-4. Make the necessary corrections to address each remark
-5. Ensure your fixes don't break other functionality
-6. Re-test the changes by reading the modified files
+1. First, read the natural language review to understand the overall assessment
+2. Then, follow the structured tasks to address each issue
+3. Focus on BLOCKING ISSUES first (critical problems that must be fixed)
+4. Review the affected files to understand the current implementation
+5. Make the necessary corrections to address each remark
+6. Ensure your fixes don't break other functionality
+7. Re-test the changes by reading the modified files
 
 REVIEW CATEGORIES:
 - PROMPT_COMPLIANCE: Does the code fulfill the original user requirements?
@@ -61,14 +65,15 @@ REVIEW CATEGORIES:
 - BEST_PRACTICES: Does the code follow modern web development standards?
 
 WORKFLOW:
-1. Read the review feedback carefully (it will be provided to you)
-2. For each issue mentioned:
+1. Read the natural language review first for context
+2. Follow the structured task list to fix issues
+3. For each issue mentioned:
    a. Find and read the relevant files
    b. Understand what needs to be changed
    c. Make the necessary edits
    d. Verify the changes address the issue
-3. Ensure blocking issues are resolved first
-4. Focus on categories with scores below 18/20
+4. Ensure blocking issues are resolved first
+5. Focus on categories with scores below 18/20
 
 GOAL:
 Improve the code until all categories would score >= 18/20 and no blocking issues remain.
@@ -133,31 +138,60 @@ class WorkspaceExplorerNode(MultiAgentBase):
             # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
-            # Extract feedback from invocation_state if available
-            feedback = ""
-            if invocation_state and isinstance(invocation_state, dict):
-                feedback = invocation_state.get("feedback_for_code_agent", "")
-                # Also try to extract from kwargs['state'] (GraphState)
-                if not feedback and "state" in kwargs:
-                    state = kwargs["state"]
-                    if hasattr(state, "results") and "quality_checker" in state.results:
-                        checker_result = state.results["quality_checker"]
-                        if hasattr(checker_result, "result") and hasattr(
-                            checker_result.result, "state"
-                        ):
-                            feedback = checker_result.result.state.get(
-                                "feedback_for_code_agent", ""
-                            )
+            # Extract natural language review and structured tasks from state
+            natural_review = ""
+            structured_tasks = ""
 
-            # Build enhanced prompt with workspace context and feedback
+            # Try to extract from kwargs['state'] (GraphState)
+            if "state" in kwargs:
+                state = kwargs["state"]
+                if hasattr(state, "results") and "quality_checker" in state.results:
+                    checker_result = state.results["quality_checker"]
+                    if hasattr(checker_result, "result") and hasattr(
+                        checker_result.result, "state"
+                    ):
+                        # Get review summary
+                        natural_review = checker_result.result.state.get(
+                            "review_summary", ""
+                        )
+                        # Get structured feedback for revision
+                        structured_tasks = checker_result.result.state.get(
+                            "feedback_for_code_agent", ""
+                        )
+
+                # Also try to get from review_agent directly (has both natural_review and review_result)
+                if hasattr(state, "results") and "review_agent" in state.results:
+                    review_result_node = state.results["review_agent"]
+                    if hasattr(review_result_node, "result") and hasattr(
+                        review_result_node.result, "state"
+                    ):
+                        review_state = review_result_node.result.state
+                        if isinstance(review_state, dict):
+                            natural_review = review_state.get("natural_review", "")
+                            review_result = review_state.get("review_result")
+                            if review_result and hasattr(
+                                review_result, "get_feedback_for_revision"
+                            ):
+                                structured_tasks = (
+                                    review_result.get_feedback_for_revision()
+                                )
+
+            # Build enhanced prompt with workspace context, natural review, and structured tasks
             workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
 {exploration_result}
 """
 
-            if feedback:
+            if natural_review:
                 workspace_context += f"""
-REVIEW FEEDBACK TO ADDRESS:
-{feedback}
+=== NATURAL LANGUAGE REVIEW ===
+{natural_review}
+
+"""
+
+            if structured_tasks:
+                workspace_context += f"""
+=== STRUCTURED TASKS TO ADDRESS ===
+{structured_tasks}
 
 """
 

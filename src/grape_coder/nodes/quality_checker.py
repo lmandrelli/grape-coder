@@ -8,6 +8,7 @@ and evaluates approval criteria.
 from strands.agent.agent_result import AgentResult
 from strands.multiagent import MultiAgentBase, MultiAgentResult
 from strands.multiagent.base import NodeResult, Status
+from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier
@@ -25,6 +26,8 @@ class QualityChecker(MultiAgentBase):
     5. Resets tool counts for agents in the revision loop
     """
 
+    MAX_ITERATIONS = 10
+
     def __init__(self):
         super().__init__()
         self.name = "quality_checker"
@@ -32,7 +35,7 @@ class QualityChecker(MultiAgentBase):
 
     def _extract_review_result(self, task, state):
         """Extract ReviewResult from the reviewer's output.
-        
+
         The reviewer node stores the parsed ReviewResult in the agent result's state.
         """
         # Import here to avoid circular imports
@@ -42,7 +45,7 @@ class QualityChecker(MultiAgentBase):
             extract_review_xml,
         )
         from grape_coder.agents.identifiers import AgentIdentifier
-        
+
         # If task is a list of ContentBlocks, extract text and try to parse XML
         if isinstance(task, list):
             # Try to find text content with valid XML
@@ -56,27 +59,28 @@ class QualityChecker(MultiAgentBase):
                     except Exception:
                         # Continue trying other items in the list
                         continue
-        
+
         # Try to get the pre-parsed ReviewResult from the graph state
-        # The ReviewValidatorNode stores it in its node result's state with AgentIdentifier.REVIEW key
-        if state and isinstance(state, dict) and "results" in state:
-            review_result_node = state["results"].get(AgentIdentifier.REVIEW)
-            if review_result_node and hasattr(review_result_node, "result"):
-                agent_result = review_result_node.result
-                if (
-                    hasattr(agent_result, "state")
-                    and "review_result" in agent_result.state
-                ):
-                    return agent_result.state["review_result"]
-        elif state and hasattr(state, "results"):
-            review_result_node = state.results.get(AgentIdentifier.REVIEW)
-            if review_result_node and hasattr(review_result_node, "result"):
-                agent_result = review_result_node.result
-                if (
-                    hasattr(agent_result, "state")
-                    and "review_result" in agent_result.state
-                ):
-                    return agent_result.state["review_result"]
+        # The ReviewValidatorNode stores it in its node result's state
+        review_result_node = None
+        if state:
+            if isinstance(state, dict) and "results" in state:
+                state_results = state["results"]
+                if state_results and "review_agent" in state_results:
+                    review_result_node = state_results["review_agent"]
+            elif hasattr(state, "results"):
+                state_results = state.results
+                if state_results and "review_agent" in state_results:
+                    review_result_node = state_results["review_agent"]
+
+        if review_result_node and hasattr(review_result_node, "result"):
+            agent_result = review_result_node.result
+            if (
+                hasattr(agent_result, "state")
+                and isinstance(agent_result.state, dict)
+                and "review_result" in agent_result.state
+            ):
+                return agent_result.state["review_result"]
 
         # Fallback: If task is a string containing XML, try to parse it
         if isinstance(task, str):
@@ -112,7 +116,17 @@ class QualityChecker(MultiAgentBase):
         review_result = self._extract_review_result(task, graph_state)
         approved = review_result.is_approved()
 
-        if approved:
+        # Auto-approve after MAX_ITERATIONS (10) review loops
+        if not approved and self.iteration >= self.MAX_ITERATIONS:
+            approved = True
+            msg = f"""✅ ITERATION {self.iteration}: AUTO-APPROVED (Max iterations reached)
+
+Code review has reached the maximum of {self.MAX_ITERATIONS} iterations.
+The result will be accepted even if quality standards are not fully met.
+
+Final review summary: {review_result.summary}"""
+            feedback_for_code_agent = review_result.get_feedback_for_revision()
+        elif approved:
             # Build success message with scores
             score_summary = ", ".join(
                 f"{cat.name}: {cat.score}/20" for cat in review_result.categories
@@ -136,7 +150,7 @@ Scores: {score_summary}
 
 The code agent will receive this feedback to implement fixes."""
             feedback_for_code_agent = feedback
-            
+
         # Reset tool counts for agents that will be revisited in the loop
         reset_agent_count(AgentIdentifier.CODE_REVISION.value)
         reset_agent_count(AgentIdentifier.REVIEW.value)
@@ -144,7 +158,7 @@ The code agent will receive this feedback to implement fixes."""
         agent_result = AgentResult(
             stop_reason="end_turn",
             message=Message(role="assistant", content=[ContentBlock(text=msg)]),
-            metrics=None,
+            metrics=EventLoopMetrics(),
             state={
                 "approved": approved,
                 "iteration": self.iteration,
