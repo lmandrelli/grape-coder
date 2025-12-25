@@ -32,6 +32,7 @@ class AgentIdentifier(str, Enum):
 
     # Code agent
     CODE = "code_agent"
+    CODE_REVISION = "code_revision_agent"
 
     # Mono-agent
     MONO_AGENT = "mono_agent"
@@ -53,6 +54,7 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.SVG: "SVG generation agent",
     AgentIdentifier.GENERATE_JS: "JavaScript generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
+    AgentIdentifier.CODE_REVISION: "Code revision agent for fixing review feedback",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
     AgentIdentifier.REVIEW: "Code review and quality assurance agent",
 }
@@ -95,6 +97,7 @@ AGENT_TOOL_LIMITS: Dict[AgentIdentifier, int] = {
     AgentIdentifier.TEXT: 30,
     AgentIdentifier.SVG: 30,
     AgentIdentifier.CODE: 50,
+    AgentIdentifier.CODE_REVISION: 50,
     AgentIdentifier.MONO_AGENT: 150,
     AgentIdentifier.REVIEW: 50,
 }

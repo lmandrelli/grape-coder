@@ -23,8 +23,10 @@ from grape_coder.tools.work_path import (
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
-def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBase:
-    """Create a code agent with file system tools"""
+def create_code_revision_agent(
+    work_path: str, agent_id: AgentIdentifier
+) -> MultiAgentBase:
+    """Create a code revision agent specialized in fixing review feedback"""
 
     # Set work_path for tools
     set_work_path(work_path)
@@ -34,38 +36,53 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
     model = cast(Model, config_manager.get_model(agent_id))
 
     # Create agent with file system tools
-    system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
+    system_prompt = f"""You are a Code Revision Specialist working in a multi-agent web development system.
 
-    CONTEXT:
-    You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
-    - CSS/styling agents have created style files (.css) for components
-    - Content agents have generated markdown files (.md) with pages content
-    - Graphics agents have created SVG files (.svg) with icons, logos, and illustrations
+CONTEXT:
+A code reviewer has analyzed the website code and provided structured feedback on issues that need to be fixed.
+Your role is to address each issue raised in the review and improve the code quality.
 
-    WORKFLOW:
-    You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
-    Your role is to:
-    1. First, explore the working directory to understand what has been prepared by previous agents
-    2. Read and understand the generated files (CSS, text content, SVG graphics, etc.)
-    3. Use these prepared resources to complete the tasks you've been assigned
-    4. Integrate all resources into cohesive, production-ready web code
-    5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets including SVG graphics
+YOUR TASK:
+You will receive REVIEW FEEDBACK with categories and specific issues to fix.
+Your responsibilities are:
+1. Carefully read each category and its remarks
+2. Focus on BLOCKING ISSUES first (critical problems that must be fixed)
+3. Review the affected files to understand the current implementation
+4. Make the necessary corrections to address each remark
+5. Ensure your fixes don't break other functionality
+6. Re-test the changes by reading the modified files
 
-    KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
-    Read them, understand them, and incorporate them into your web development work to fulfill the task list.
-    Maybe some files are incomplete, create new one or rewrite them to add missing logic. Especially style files may need additional classes to style the page correctly.
-    Your goal is to produce a functional, well-structured website that integrates all the prepared components.
+REVIEW CATEGORIES:
+- PROMPT_COMPLIANCE: Does the code fulfill the original user requirements?
+- CODE_VALIDITY: Is the code syntactically correct and free of bugs?
+- INTEGRATION: Are all files properly linked and working together?
+- RESPONSIVENESS: Does the layout work across different screen sizes?
+- COMPLETENESS: Are all features implemented and functional?
+- BEST_PRACTICES: Does the code follow modern web development standards?
 
-    Available tools:
-    - list_files: List files and directories in a path (automatically called at startup)
-    - read_file: Read contents of one or more files
-    - edit_file: Rewrite or create a file with new content
-    - grep_files: Search for patterns in files
-    - glob_files: Find files using glob patterns
-    - fetch_url: Fetch content from a URL
+WORKFLOW:
+1. Read the review feedback carefully (it will be provided to you)
+2. For each issue mentioned:
+   a. Find and read the relevant files
+   b. Understand what needs to be changed
+   c. Make the necessary edits
+   d. Verify the changes address the issue
+3. Ensure blocking issues are resolved first
+4. Focus on categories with scores below 18/20
 
-    The workspace exploration will be automatically provided to you at the start.
-    """
+GOAL:
+Improve the code until all categories would score >= 18/20 and no blocking issues remain.
+
+Available tools:
+- list_files: List files and directories in a path (automatically called at startup)
+- read_file: Read contents of one or more files
+- edit_file: Rewrite or create a file with new content
+- grep_files: Search for patterns in files
+- glob_files: Find files using glob patterns
+- fetch_url: Fetch content from a URL
+
+The workspace exploration will be automatically provided to you at the start.
+"""
 
     agent = Agent(
         model=model,
@@ -116,12 +133,35 @@ class WorkspaceExplorerNode(MultiAgentBase):
             # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
-            # Build enhanced prompt with workspace context
+            # Extract feedback from invocation_state if available
+            feedback = ""
+            if invocation_state and isinstance(invocation_state, dict):
+                feedback = invocation_state.get("feedback_for_code_agent", "")
+                # Also try to extract from kwargs['state'] (GraphState)
+                if not feedback and "state" in kwargs:
+                    state = kwargs["state"]
+                    if hasattr(state, "results") and "quality_checker" in state.results:
+                        checker_result = state.results["quality_checker"]
+                        if hasattr(checker_result, "result") and hasattr(
+                            checker_result.result, "state"
+                        ):
+                            feedback = checker_result.result.state.get(
+                                "feedback_for_code_agent", ""
+                            )
+
+            # Build enhanced prompt with workspace context and feedback
             workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
 {exploration_result}
+"""
 
-Now proceed with your task:
-{task}"""
+            if feedback:
+                workspace_context += f"""
+REVIEW FEEDBACK TO ADDRESS:
+{feedback}
+
+"""
+
+            workspace_context += f"Now proceed with fixing the issues:\n{task}"
 
             # Execute the main task with workspace context
             response = await self.agent.invoke_async(workspace_context)
