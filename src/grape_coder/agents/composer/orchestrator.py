@@ -28,9 +28,21 @@ def create_orchestrator_agent() -> MultiAgentBase:
     these tasks and intelligently distribute them to specialized agents that will work in parallel to build the website.
 
     YOUR ROLE:
-    Analyze the incoming TODO LIST and distribute each task to the appropriate specialized agent based on the task's nature.
+    Analyze the incoming TODO LIST and extract the global context, then distribute each task to the appropriate specialized agent based on the task's nature.
     Your job is to understand each task and route it to the agent best suited to accomplish it.
     You must ensure every task from the TODO LIST is assigned to an agent.
+
+    GLOBAL CONTEXT EXTRACTION:
+    Before distributing tasks, you MUST extract and summarize the global context of the entire website project.
+    This context should include:
+    - Overall website purpose and goals
+    - Target audience and design style
+    - Key features and functionality requirements
+    - Technical requirements or constraints
+    - Content themes and messaging
+    - Any important design decisions or patterns
+    
+    This global context will be shared with ALL specialized agents to ensure consistency across the entire project.
 
     AVAILABLE SPECIALIZED AGENTS:
     1. {AgentIdentifier.GENERATE_CLASS}: CSS Specialist
@@ -77,8 +89,12 @@ def create_orchestrator_agent() -> MultiAgentBase:
     6. Group related tasks together under the same agent
 
     OUTPUT FORMAT (REQUIRED XML):
-    You MUST output your task distribution in this exact XML format:
+    You MUST output your response in this exact XML format with BOTH context and task distribution:
 
+    <context>
+    [Detailed global context summary that will be shared with all agents. Include website purpose, target audience, design style, key features, technical requirements, content themes, and important design decisions. This context ensures all agents work consistently towards the same goals.]
+    </context>
+    
     <task_distribution>
     <{AgentIdentifier.GENERATE_CLASS}>
         <task>Specific CSS task description</task>
@@ -114,7 +130,11 @@ def create_orchestrator_agent() -> MultiAgentBase:
     - Create about me content
     - Integrate everything into HTML
 
-    You would distribute:
+    You would output:
+    <context>
+    This is a modern portfolio website for a creative professional showcasing their work. The target audience is potential clients and employers. The design should be clean, professional, and modern with a minimalist aesthetic. Key features include responsive navigation, project showcase with filtering, smooth animations, and contact section. The color scheme should be monochromatic with accent colors. Technical requirements include mobile-first responsive design and fast loading times.
+    </context>
+    
     <task_distribution>
     <{AgentIdentifier.GENERATE_CLASS}>
         <task>Design a responsive navigation bar with modern styling</task>
@@ -138,7 +158,7 @@ def create_orchestrator_agent() -> MultiAgentBase:
     </{AgentIdentifier.CODE}>
     </task_distribution>
 
-    Be thorough, specific, and ensure every task from the TODO LIST is assigned to an agent."""
+    IMPORTANT: Always include both <context> and <task_distribution> sections. The context provides essential global information to all agents, while the task distribution assigns specific work. Be thorough, specific, and ensure every task from the TODO LIST is assigned to an agent."""
 
     agent = Agent(
         model=model,
@@ -297,12 +317,20 @@ Please fix the XML and provide a corrected version. Ensure the XML is well-forme
         """Extract XML content from model response"""
         import re
 
-        # Try to find XML content between <task_distribution> and </task_distribution>
-        pattern = r"<task_distribution>.*?</task_distribution>"
-        match = re.search(pattern, content, re.DOTALL)
+        # Try to find the complete XML structure with both context and task_distribution
+        # Look for <context> followed by <task_distribution>
+        context_pattern = r"<context>.*?</context>"
+        task_pattern = r"<task_distribution>.*?</task_distribution>"
 
-        if match:
-            return match.group(0)
+        context_match = re.search(context_pattern, content, re.DOTALL)
+        task_match = re.search(task_pattern, content, re.DOTALL)
+
+        if context_match and task_match:
+            # Return both sections together
+            return context_match.group(0) + "\n" + task_match.group(0)
+        elif task_match:
+            # Fallback to just task_distribution if context is missing
+            return task_match.group(0)
 
         # If no specific tags found, try to find any XML-like content
         xml_pattern = r"<[^>]+>.*?</[^>]+>"
@@ -320,18 +348,48 @@ class XMLValidationError(Exception):
 
 
 def validate_distribution(xml_distribution: str) -> str:
-    """Validate the XML task distribution format
+    """Validate the XML distribution format with context and task distribution
 
     Args:
-        xml_distribution: XML string containing task distribution
+        xml_distribution: XML string containing context and task distribution
     """
     import xml.etree.ElementTree as ET
 
     try:
-        root = ET.fromstring(xml_distribution)
+        # Handle the case where we have both context and task_distribution
+        # Check if the content contains both sections
+        if (
+            "<context>" in xml_distribution
+            and "<task_distribution>" in xml_distribution
+        ):
+            # Extract and validate both sections
+            context_match = xml_distribution.find("<context>")
+            context_end = xml_distribution.find("</context>") + len("</context>")
+            task_start = xml_distribution.find("<task_distribution>")
 
-        if root.tag != "task_distribution":
-            return "Error: Root element must be 'task_distribution'"
+            context_section = xml_distribution[context_match:context_end]
+            task_section = xml_distribution[task_start:]
+
+            # Validate context section
+            context_root = ET.fromstring(context_section)
+            if context_root.tag != "context":
+                raise XMLValidationError(
+                    "Error: Context section must have 'context' as root element"
+                )
+
+            # Validate task distribution section
+            task_root = ET.fromstring(task_section)
+            if task_root.tag != "task_distribution":
+                raise XMLValidationError(
+                    "Error: Task distribution section must have 'task_distribution' as root element"
+                )
+
+            root = task_root
+        else:
+            # Fallback to old format with just task_distribution
+            root = ET.fromstring(xml_distribution)
+            if root.tag != "task_distribution":
+                return "Error: Root element must be 'task_distribution'"
 
         required_agents = [
             AgentIdentifier.GENERATE_CLASS,
@@ -353,7 +411,8 @@ def validate_distribution(xml_distribution: str) -> str:
             tasks = agent.findall("task")
             task_count += len(tasks)
 
-        return f"Validation passed: {task_count} tasks distributed across {len(found_agents)} agents"
+        context_info = " with context" if "<context>" in xml_distribution else ""
+        return f"Validation passed{context_info}: {task_count} tasks distributed across {len(found_agents)} agents"
 
     except ET.ParseError as e:
         raise XMLValidationError(f"Error: Invalid XML format - {str(e)}")
