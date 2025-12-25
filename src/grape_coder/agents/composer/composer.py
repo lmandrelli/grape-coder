@@ -1,3 +1,5 @@
+from typing import cast, Any
+
 from strands.multiagent import GraphBuilder
 from strands.multiagent.base import Status
 from strands.multiagent.graph import GraphState
@@ -38,10 +40,17 @@ def needs_revision(state: GraphState) -> bool:
     if not checker_result:
         return False
     multi_result = checker_result.result
-    if hasattr(multi_result, "results") and "quality_checker" in multi_result.results:
-        agent_result = multi_result.results["quality_checker"].result
-        if hasattr(agent_result, "state"):
-            return not agent_result.state.get("approved", False)
+    if hasattr(multi_result, "results"):
+        results_dict: Any = multi_result.results
+        if hasattr(results_dict, "__contains__") and hasattr(
+            results_dict, "__getitem__"
+        ):
+            try:
+                agent_result = results_dict["quality_checker"].result
+                if hasattr(agent_result, "state"):
+                    return not agent_result.state.get("approved", False)
+            except (KeyError, TypeError):
+                pass
     return True  # Default to needing revision if we can't determine
 
 

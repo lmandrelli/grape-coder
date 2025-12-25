@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from typing import Any, List
+from typing import Any, List, cast
 
 from strands import Agent
 from strands.agent import AgentResult
