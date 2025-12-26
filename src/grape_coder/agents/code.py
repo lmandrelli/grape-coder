@@ -67,8 +67,10 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
     The workspace exploration will be automatically provided to you at the start.
     """
 
-    agent = Agent(
+    return WorkspaceExplorerNode(
         model=model,
+        system_prompt=system_prompt,
+        work_path=work_path,
         tools=[
             list_files,
             read_file,
@@ -78,17 +80,13 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
             fetch_url,
             search,
         ],
-        system_prompt=system_prompt,
-        name=agent_id,
-        description=get_agent_description(agent_id),
+        agent_id=agent_id,
         hooks=[
             get_tool_tracker(agent_id),
             get_conversation_tracker(agent_id),
             get_tool_limit_hook(agent_id),
         ],
     )
-
-    return WorkspaceExplorerNode(agent=agent, work_path=work_path)
 
 
 @tool
@@ -105,14 +103,38 @@ def edit_file_code(path: str, content: str) -> str:
 class WorkspaceExplorerNode(MultiAgentBase):
     """Custom node that automatically explores the workspace before processing tasks"""
 
-    def __init__(self, agent: Agent, work_path: str):
+    def __init__(
+        self,
+        model,
+        system_prompt,
+        work_path: str,
+        tools,
+        agent_id,
+        hooks=None,
+    ):
         super().__init__()
-        self.agent = agent
+        self.model = model
+        self.system_prompt = system_prompt
         self.work_path = work_path
+        self.tools = tools
+        self.agent_id = agent_id
+        self.hooks = hooks or []
+
+    def _create_agent(self) -> Agent:
+        return Agent(
+            model=self.model,
+            tools=self.tools,
+            system_prompt=self.system_prompt,
+            name=self.agent_id,
+            description=get_agent_description(self.agent_id),
+            hooks=self.hooks,
+        )
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
         """Execute workspace exploration before main task"""
         try:
+            agent = self._create_agent()
+
             # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
@@ -124,7 +146,7 @@ Now proceed with your task:
 {task}"""
 
             # Execute the main task with workspace context
-            response = await self.agent.invoke_async(workspace_context)
+            response = await agent.invoke_async(workspace_context)
 
             # Return successful result
             agent_result = AgentResult(

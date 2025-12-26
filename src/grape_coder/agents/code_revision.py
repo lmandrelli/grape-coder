@@ -79,8 +79,10 @@ Available tools:
 The workspace exploration will be automatically provided to you at the start.
 """
 
-    agent = Agent(
+    return WorkspaceExplorerNode(
         model=model,
+        system_prompt=system_prompt,
+        work_path=work_path,
         tools=[
             list_files,
             read_file,
@@ -90,17 +92,13 @@ The workspace exploration will be automatically provided to you at the start.
             fetch_url,
             search,
         ],
-        system_prompt=system_prompt,
-        name=agent_id,
-        description=get_agent_description(agent_id),
+        agent_id=agent_id,
         hooks=[
             get_tool_tracker(agent_id),
             get_conversation_tracker(agent_id),
             get_tool_limit_hook(agent_id),
         ],
     )
-
-    return WorkspaceExplorerNode(agent=agent, work_path=work_path)
 
 
 @tool
@@ -117,21 +115,45 @@ def edit_file_code(path: str, content: str) -> str:
 class WorkspaceExplorerNode(MultiAgentBase):
     """Custom node that automatically explores the workspace before processing tasks"""
 
-    def __init__(self, agent: Agent, work_path: str):
+    def __init__(
+        self,
+        model,
+        system_prompt,
+        work_path: str,
+        tools,
+        agent_id,
+        hooks=None,
+    ):
         super().__init__()
-        self.agent = agent
+        self.model = model
+        self.system_prompt = system_prompt
         self.work_path = work_path
+        self.tools = tools
+        self.agent_id = agent_id
+        self.hooks = hooks or []
+
+    def _create_agent(self) -> Agent:
+        return Agent(
+            model=self.model,
+            tools=self.tools,
+            system_prompt=self.system_prompt,
+            name=self.agent_id,
+            description=get_agent_description(self.agent_id),
+            hooks=self.hooks,
+        )
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
         """Execute workspace exploration before main task"""
         try:
+            agent = self._create_agent()
+
             # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
             # Extract structured feedback from state (contains summary + tasks)
             structured_tasks = ""
 
-            # Try to extract from review_agent (has review_result with get_feedback_for_revision)
+            # Try to extract from review_agent (has review_output with get_feedback_for_revision)
             if "state" in kwargs:
                 state = kwargs["state"]
                 if hasattr(state, "results") and "review_agent" in state.results:
@@ -141,12 +163,12 @@ class WorkspaceExplorerNode(MultiAgentBase):
                     ):
                         review_state = review_result_node.result.state
                         if isinstance(review_state, dict):
-                            review_result = review_state.get("review_result")
-                            if review_result and hasattr(
-                                review_result, "get_feedback_for_revision"
+                            review_output = review_state.get("review_output")
+                            if review_output and hasattr(
+                                review_output, "get_feedback_for_revision"
                             ):
                                 structured_tasks = (
-                                    review_result.get_feedback_for_revision()
+                                    review_output.get_feedback_for_revision()
                                 )
 
             # Build enhanced prompt with workspace context, natural review, and structured tasks
@@ -164,7 +186,7 @@ class WorkspaceExplorerNode(MultiAgentBase):
             workspace_context += f"Now proceed with fixing the issues:\n{task}"
 
             # Execute the main task with workspace context
-            response = await self.agent.invoke_async(workspace_context)
+            response = await agent.invoke_async(workspace_context)
 
             # Return successful result
             agent_result = AgentResult(

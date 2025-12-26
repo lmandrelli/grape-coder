@@ -461,17 +461,65 @@ class ReviewValidatorNode(MultiAgentBase):
 
     def __init__(
         self,
-        reviewer_agent: Agent,
-        score_evaluator_agent: Agent,
-        task_generator_agent: Agent,
+        reviewer_model,
+        score_evaluator_model,
+        task_generator_model,
+        reviewer_prompt,
+        score_evaluator_prompt,
+        task_generator_prompt,
+        reviewer_tools,
         max_retries: int = 3,
         node_name: str = "review_agent",
+        reviewer_hooks=None,
+        score_evaluator_hooks=None,
+        task_generator_hooks=None,
     ):
         super().__init__()
-        self.reviewer = ReviewerAgent(reviewer_agent)
-        self.score_evaluator = ScoreEvaluatorAgent(score_evaluator_agent, max_retries)
-        self.task_generator = TaskGeneratorAgent(task_generator_agent, max_retries)
+        self.reviewer_model = reviewer_model
+        self.score_evaluator_model = score_evaluator_model
+        self.task_generator_model = task_generator_model
+        self.reviewer_prompt = reviewer_prompt
+        self.score_evaluator_prompt = score_evaluator_prompt
+        self.task_generator_prompt = task_generator_prompt
+        self.reviewer_tools = reviewer_tools
+        self.max_retries = max_retries
         self.node_name = node_name
+        self.reviewer_hooks = reviewer_hooks or []
+        self.score_evaluator_hooks = score_evaluator_hooks or []
+        self.task_generator_hooks = task_generator_hooks or []
+
+    def _create_reviewer_agent(self) -> ReviewerAgent:
+        agent = Agent(
+            model=cast(AgentIdentifier, self.reviewer_model),
+            tools=self.reviewer_tools,
+            system_prompt=self.reviewer_prompt,
+            name=AgentIdentifier.REVIEW,
+            description=get_agent_description(AgentIdentifier.REVIEW),
+            hooks=self.reviewer_hooks,
+        )
+        return ReviewerAgent(agent)
+
+    def _create_score_evaluator_agent(self) -> ScoreEvaluatorAgent:
+        agent = Agent(
+            model=cast(AgentIdentifier, self.score_evaluator_model),
+            tools=[],
+            system_prompt=self.score_evaluator_prompt,
+            name="score_evaluator",
+            description="Evaluates code quality scores from natural language reviews",
+            hooks=self.score_evaluator_hooks,
+        )
+        return ScoreEvaluatorAgent(agent, self.max_retries)
+
+    def _create_task_generator_agent(self) -> TaskGeneratorAgent:
+        agent = Agent(
+            model=cast(AgentIdentifier, self.task_generator_model),
+            tools=[],
+            system_prompt=self.task_generator_prompt,
+            name="task_generator",
+            description="Generates structured tasks from natural language code reviews",
+            hooks=self.task_generator_hooks,
+        )
+        return TaskGeneratorAgent(agent, self.max_retries)
 
     async def invoke_async(
         self,
@@ -481,15 +529,19 @@ class ReviewValidatorNode(MultiAgentBase):
     ) -> MultiAgentResult:
         """Execute three-agent review process."""
         try:
+            reviewer = self._create_reviewer_agent()
+            score_evaluator = self._create_score_evaluator_agent()
+            task_generator = self._create_task_generator_agent()
+
             # Step 1: Generate natural language review
-            natural_review = await self.reviewer.invoke_async(task, invocation_state)
+            natural_review = await reviewer.invoke_async(task, invocation_state)
 
             # Step 2: Generate score and tasks in parallel
             import asyncio
 
             category_scores, (summary, tasks) = await asyncio.gather(
-                self.score_evaluator.invoke_async(natural_review),
-                self.task_generator.invoke_async(natural_review),
+                score_evaluator.invoke_async(natural_review),
+                task_generator.invoke_async(natural_review),
             )
 
             # Create combined output
@@ -658,53 +710,32 @@ def create_review_agent(work_path: str) -> ReviewValidatorNode:
     CRITICAL INSTRUCTION:
     Extract specific, actionable tasks from the review. Be precise about file names and exact changes needed. The code revision agent will execute these tasks in order. Output your tasks in the required XML format."""
 
-    # Create reviewer agent
-    reviewer_agent = Agent(
-        model=cast(AgentIdentifier, reviewer_model),
-        tools=[
+    return ReviewValidatorNode(
+        reviewer_model=reviewer_model,
+        score_evaluator_model=score_evaluator_model,
+        task_generator_model=task_generator_model,
+        reviewer_prompt=reviewer_prompt,
+        score_evaluator_prompt=score_evaluator_prompt,
+        task_generator_prompt=task_generator_prompt,
+        reviewer_tools=[
             list_files,
             read_file,
             grep_files,
             glob_files,
         ],
-        system_prompt=reviewer_prompt,
-        name=AgentIdentifier.REVIEW,
-        description=get_agent_description(AgentIdentifier.REVIEW),
-        hooks=[
+        max_retries=3,
+        node_name="review_agent",
+        reviewer_hooks=[
             get_tool_tracker(AgentIdentifier.REVIEW),
             get_conversation_tracker(AgentIdentifier.REVIEW),
             get_tool_limit_hook(AgentIdentifier.REVIEW),
         ],
-    )
-
-    # Create score evaluator agent
-    score_evaluator_agent = Agent(
-        model=cast(AgentIdentifier, score_evaluator_model),
-        tools=[],
-        system_prompt=score_evaluator_prompt,
-        name="score_evaluator",
-        description="Evaluates code quality scores from natural language reviews",
-        hooks=[
+        score_evaluator_hooks=[
             get_tool_tracker(AgentIdentifier.REVIEW),
             get_conversation_tracker(AgentIdentifier.REVIEW),
         ],
-    )
-
-    # Create task generator agent
-    task_generator_agent = Agent(
-        model=cast(AgentIdentifier, task_generator_model),
-        tools=[],
-        system_prompt=task_generator_prompt,
-        name="task_generator",
-        description="Generates structured tasks from natural language code reviews",
-        hooks=[
+        task_generator_hooks=[
             get_tool_tracker(AgentIdentifier.REVIEW),
             get_conversation_tracker(AgentIdentifier.REVIEW),
         ],
-    )
-
-    return ReviewValidatorNode(
-        reviewer_agent=reviewer_agent,
-        score_evaluator_agent=score_evaluator_agent,
-        task_generator_agent=task_generator_agent,
     )
