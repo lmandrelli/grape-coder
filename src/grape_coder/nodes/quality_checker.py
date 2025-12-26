@@ -1,8 +1,8 @@
 """Quality Checker Node for the review loop.
 
 This node checks the review result and determines if the code needs revision
-or if it can proceed to completion. It parses the structured XML review
-and evaluates approval criteria.
+or if it can proceed to completion. It evaluates the category scores from the review
+and generates feedback for the code revision agent.
 """
 
 from strands.agent.agent_result import AgentResult
@@ -19,11 +19,14 @@ class QualityChecker(MultiAgentBase):
     """Custom node that evaluates review results and decides if revision is needed.
 
     This node:
-    1. Extracts the ReviewResult from the reviewer's output
-    2. Checks for blocking issues
-    3. Verifies all category scores meet minimum threshold (18/20)
-    4. If not approved, generates feedback for the code agent
-    5. Resets tool counts for agents in the revision loop
+    1. Extracts the ReviewOutput from the reviewer's output
+    2. Checks if category scores meet minimum thresholds
+       - Overall average >= 16
+       - Code validity >= 17 (CRITICAL)
+       - Integration >= 17 (CRITICAL)
+       - Other categories >= 15
+    3. If not approved, generates feedback for the code agent
+    4. Resets tool counts for agents in the revision loop
     """
 
     MAX_ITERATIONS = 10
@@ -33,34 +36,15 @@ class QualityChecker(MultiAgentBase):
         self.name = "quality_checker"
         self.iteration = 0
 
-    def _extract_review_result(self, task, state):
-        """Extract ReviewResult from the reviewer's output.
+    def _extract_review_output(self, task, state):
+        """Extract ReviewOutput from the reviewer's output.
 
-        The reviewer node stores the parsed ReviewResult in the agent result's state.
+        The reviewer node stores the ReviewOutput in the agent result's state.
         """
         # Import here to avoid circular imports
-        from grape_coder.agents.composer.reviewer import (
-            ReviewResult,
-            parse_review_xml,
-            extract_review_xml,
-        )
-        from grape_coder.agents.identifiers import AgentIdentifier
+        from grape_coder.agents.composer.reviewer import ReviewOutput
 
-        # If task is a list of ContentBlocks, extract text and try to parse XML
-        if isinstance(task, list):
-            # Try to find text content with valid XML
-            for item in task:
-                if isinstance(item, dict) and "text" in item:
-                    text_content = item["text"]
-                    try:
-                        xml_content = extract_review_xml(text_content)
-                        result = parse_review_xml(xml_content)
-                        return result
-                    except Exception:
-                        # Continue trying other items in the list
-                        continue
-
-        # Try to get the pre-parsed ReviewResult from the graph state
+        # Try to get the pre-parsed ReviewOutput from the graph state
         # The ReviewValidatorNode stores it in its node result's state
         review_result_node = None
         if state:
@@ -78,29 +62,31 @@ class QualityChecker(MultiAgentBase):
             if (
                 hasattr(agent_result, "state")
                 and isinstance(agent_result.state, dict)
-                and "review_result" in agent_result.state
+                and "review_output" in agent_result.state
             ):
-                return agent_result.state["review_result"]
+                return agent_result.state["review_output"]
 
-        # Fallback: If task is a string containing XML, try to parse it
-        if isinstance(task, str):
-            try:
-                xml_content = extract_review_xml(task)
-                return parse_review_xml(xml_content)
-            except Exception:
-                pass
+        # If we couldn't parse, return a default failed review with low scores
+        from grape_coder.agents.composer.reviewer import CategoryScore
 
-        # If we couldn't parse, return a default failed review
-        return ReviewResult(
-            blocking_issues=["Could not parse review result"],
+        return ReviewOutput(
+            category_scores=[
+                CategoryScore(name="user_prompt_compliance", score=10),
+                CategoryScore(name="code_validity", score=10),
+                CategoryScore(name="integration", score=10),
+                CategoryScore(name="responsiveness", score=10),
+                CategoryScore(name="best_practices", score=10),
+                CategoryScore(name="accessibility", score=10),
+            ],
             summary="Quality checker failed to extract review data",
+            tasks=[],
         )
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
         """Evaluate the review result and decide next step.
 
         Args:
-            task: The task/review feedback from the reviewer agent (XML content)
+            task: The task/review feedback from the reviewer agent
             invocation_state: State from previous invocations (GraphState)
             **kwargs: Additional arguments (may contain 'state')
 
@@ -112,9 +98,15 @@ class QualityChecker(MultiAgentBase):
         # Try to get the graph state from kwargs
         graph_state = kwargs.get("state", invocation_state)
 
-        # Extract and evaluate the review result
-        review_result = self._extract_review_result(task, graph_state)
-        approved = review_result.is_approved()
+        # Extract and evaluate the review output
+        review_output = self._extract_review_output(task, graph_state)
+        approved = review_output.is_approved()
+
+        # Calculate average score
+        category_dict = {c.name: c.score for c in review_output.category_scores}
+        avg_score = (
+            sum(category_dict.values()) / len(category_dict) if category_dict else 0
+        )
 
         # Auto-approve after MAX_ITERATIONS (10) review loops
         if not approved and self.iteration >= self.MAX_ITERATIONS:
@@ -124,31 +116,36 @@ class QualityChecker(MultiAgentBase):
 Code review has reached the maximum of {self.MAX_ITERATIONS} iterations.
 The result will be accepted even if quality standards are not fully met.
 
-Final review summary: {review_result.summary}"""
-            feedback_for_code_agent = review_result.get_feedback_for_revision()
+Final review summary: {review_output.summary}"""
+            feedback_for_code_agent = review_output.get_feedback_for_revision()
         elif approved:
-            # Build success message with scores
-            score_summary = ", ".join(
-                f"{cat.name}: {cat.score}/20" for cat in review_result.categories
-            )
             msg = f"""✅ ITERATION {self.iteration}: APPROVED
 
 All quality criteria met:
-- No blocking issues
-- All category scores >= 18/20
+- Average score >= 16/20
+- Code validity >= 17/20
+- Integration >= 17/20
+- All other categories >= 15/20
 
-Scores: {score_summary}
+Category Scores:
+- User Prompt Compliance: {category_dict.get("user_prompt_compliance", 0)}/20
+- Code Validity: {category_dict.get("code_validity", 0)}/20
+- Integration: {category_dict.get("integration", 0)}/20
+- Responsiveness: {category_dict.get("responsiveness", 0)}/20
+- Best Practices: {category_dict.get("best_practices", 0)}/20
+- Accessibility: {category_dict.get("accessibility", 0)}/20
 
-{review_result.summary}"""
+Average Score: {avg_score:.1f}/20
+
+{review_output.summary}"""
             feedback_for_code_agent = None
         else:
-            # Build revision request with detailed feedback
-            feedback = review_result.get_feedback_for_revision()
+            feedback = review_output.get_feedback_for_revision()
             msg = f"""⚠️ ITERATION {self.iteration}: NEEDS REVISION
 
 {feedback}
 
-The code agent will receive this feedback to implement fixes."""
+The code revision agent will receive this feedback to implement fixes."""
             feedback_for_code_agent = feedback
 
         # Reset tool counts for agents that will be revisited in the loop
@@ -163,7 +160,9 @@ The code agent will receive this feedback to implement fixes."""
                 "approved": approved,
                 "iteration": self.iteration,
                 "feedback_for_code_agent": feedback_for_code_agent,
-                "review_summary": review_result.summary,
+                "review_summary": review_output.summary,
+                "review_scores": category_dict,
+                "avg_score": avg_score,
             },
         )
 

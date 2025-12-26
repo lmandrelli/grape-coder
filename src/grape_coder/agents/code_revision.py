@@ -39,44 +39,34 @@ def create_code_revision_agent(
     system_prompt = f"""You are a Code Revision Specialist working in a multi-agent web development system.
 
 CONTEXT:
-A code reviewer has analyzed the website code and provided:
-1. A NATURAL LANGUAGE REVIEW with detailed feedback
-2. STRUCTURED TASKS organized by category with specific issues to fix
+A code reviewer has analyzed the website code and provided feedback containing:
+1. A REVIEW SUMMARY (inside <review_summary> XML tag) - brief overview of main issues
+2. TASKS TO FIX organized by priority with specific issues to address
 
 Your role is to address each issue raised in the review and improve the code quality.
 
 YOUR TASK:
-You will receive both a natural language review and structured task list.
+You will receive a review summary and a task list.
 Your responsibilities are:
-1. First, read the natural language review to understand the overall assessment
-2. Then, follow the structured tasks to address each issue
-3. Focus on BLOCKING ISSUES first (critical problems that must be fixed)
+1. First, read the review summary inside <review_summary> to understand the overall assessment
+2. Then, follow the task list to address each issue in order
+3. First tasks are the most important - fix them first
 4. Review the affected files to understand the current implementation
-5. Make the necessary corrections to address each remark
+5. Make the necessary corrections to address each task
 6. Ensure your fixes don't break other functionality
 7. Re-test the changes by reading the modified files
 
-REVIEW CATEGORIES:
-- PROMPT_COMPLIANCE: Does the code fulfill the original user requirements?
-- CODE_VALIDITY: Is the code syntactically correct and free of bugs?
-- INTEGRATION: Are all files properly linked and working together?
-- RESPONSIVENESS: Does the layout work across different screen sizes?
-- COMPLETENESS: Are all features implemented and functional?
-- BEST_PRACTICES: Does the code follow modern web development standards?
-
 WORKFLOW:
-1. Read the natural language review first for context
-2. Follow the structured task list to fix issues
-3. For each issue mentioned:
-   a. Find and read the relevant files
-   b. Understand what needs to be changed
-   c. Make the necessary edits
-   d. Verify the changes address the issue
-4. Ensure blocking issues are resolved first
-5. Focus on categories with scores below 18/20
+1. Read the review summary (inside <review_summary> tag) first for context
+2. Follow the task list to fix issues in order (first tasks = highest priority)
+3. For each task mentioned:
+    a. Find and read the relevant files
+    b. Understand what needs to be changed
+    c. Make the necessary edits
+    d. Verify the changes address the issue
 
 GOAL:
-Improve the code until all categories would score >= 18/20 and no blocking issues remain.
+Fix all issues in the task list to improve the code quality.
 
 Available tools:
 - list_files: List files and directories in a path (automatically called at startup)
@@ -138,28 +128,12 @@ class WorkspaceExplorerNode(MultiAgentBase):
             # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
-            # Extract natural language review and structured tasks from state
-            natural_review = ""
+            # Extract structured feedback from state (contains summary + tasks)
             structured_tasks = ""
 
-            # Try to extract from kwargs['state'] (GraphState)
+            # Try to extract from review_agent (has review_result with get_feedback_for_revision)
             if "state" in kwargs:
                 state = kwargs["state"]
-                if hasattr(state, "results") and "quality_checker" in state.results:
-                    checker_result = state.results["quality_checker"]
-                    if hasattr(checker_result, "result") and hasattr(
-                        checker_result.result, "state"
-                    ):
-                        # Get review summary
-                        natural_review = checker_result.result.state.get(
-                            "review_summary", ""
-                        )
-                        # Get structured feedback for revision
-                        structured_tasks = checker_result.result.state.get(
-                            "feedback_for_code_agent", ""
-                        )
-
-                # Also try to get from review_agent directly (has both natural_review and review_result)
                 if hasattr(state, "results") and "review_agent" in state.results:
                     review_result_node = state.results["review_agent"]
                     if hasattr(review_result_node, "result") and hasattr(
@@ -167,7 +141,6 @@ class WorkspaceExplorerNode(MultiAgentBase):
                     ):
                         review_state = review_result_node.result.state
                         if isinstance(review_state, dict):
-                            natural_review = review_state.get("natural_review", "")
                             review_result = review_state.get("review_result")
                             if review_result and hasattr(
                                 review_result, "get_feedback_for_revision"
@@ -181,16 +154,9 @@ class WorkspaceExplorerNode(MultiAgentBase):
 {exploration_result}
 """
 
-            if natural_review:
-                workspace_context += f"""
-=== NATURAL LANGUAGE REVIEW ===
-{natural_review}
-
-"""
-
             if structured_tasks:
                 workspace_context += f"""
-=== STRUCTURED TASKS TO ADDRESS ===
+=== REVIEW FEEDBACK ===
 {structured_tasks}
 
 """
