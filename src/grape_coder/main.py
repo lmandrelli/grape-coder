@@ -15,6 +15,7 @@ from grape_coder.globals import set_original_user_prompt
 from .agents.composer import build_composer
 from .agents.mono_agent import create_mono_agent
 from .agents.planner import build_planner
+from .agents.review import build_review_graph
 from .config import run_config_setup
 from .config.manager import get_config_manager
 
@@ -300,6 +301,17 @@ def code(
 
                 graph = build_composer(str(work_path))
                 _ = graph(graph_input)
+
+                console.print("\n[green]🔍 Review[/green]")
+
+                review_graph = build_review_graph(str(work_path))
+                review_prompt = f"""{global_system_prompt}
+
+                ORIGINAL USER REQUEST:
+                {user_input}
+
+                This is a system to review the code that has been generated. Review the code files and provide feedback for improvement if needed."""
+                _ = review_graph(review_prompt)
 
             except KeyboardInterrupt:
                 console.print("\n[yellow]Goodbye![/yellow]")

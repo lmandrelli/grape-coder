@@ -21,26 +21,20 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
+from .review_data import ReviewData
 
 
-def create_code_revision_agent(
-    work_path: str, agent_id: AgentIdentifier
-) -> MultiAgentBase:
-    """Create a code revision agent specialized in fixing review feedback"""
-
-    # Set work_path for tools
+def create_code_revision_agent(work_path: str, agent_id: AgentIdentifier):
     set_work_path(work_path)
 
-    # Get model using the config manager
     config_manager = get_config_manager()
     model = cast(Model, config_manager.get_model(agent_id))
 
-    # Create agent with file system tools
     system_prompt = f"""You are a Code Revision Specialist working in a multi-agent web development system.
 
 CONTEXT:
 A code reviewer has analyzed the website code and provided feedback containing:
-1. A REVIEW SUMMARY (inside <review_summary> XML tag) - brief overview of main issues
+1. A REVIEW SUMMARY - brief overview of main issues
 2. TASKS TO FIX organized by priority with specific issues to address
 
 Your role is to address each issue raised in the review and improve the code quality.
@@ -48,7 +42,7 @@ Your role is to address each issue raised in the review and improve the code qua
 YOUR TASK:
 You will receive a review summary and a task list.
 Your responsibilities are:
-1. First, read the review summary inside <review_summary> to understand the overall assessment
+1. First, read the review summary to understand the overall assessment
 2. Then, follow the task list to address each issue in order
 3. First tasks are the most important - fix them first
 4. Review the affected files to understand the current implementation
@@ -57,7 +51,7 @@ Your responsibilities are:
 7. Re-test the changes by reading the modified files
 
 WORKFLOW:
-1. Read the review summary (inside <review_summary> tag) first for context
+1. Read the review summary first for context
 2. Follow the task list to fix issues in order (first tasks = highest priority)
 3. For each task mentioned:
     a. Find and read the relevant files
@@ -103,8 +97,6 @@ The workspace exploration will be automatically provided to you at the start.
 
 @tool
 def edit_file_code(path: str, content: str) -> str:
-    """Edit or create a web file. Only .html, .js, .css, .svg, .json and .md files are allowed."""
-    # Validate that the file has an allowed extension
     allowed_extensions = (".html", ".js", ".css", ".svg", ".json", ".md")
     if not path.endswith(allowed_extensions):
         return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .svg, .json, .md. The path '{path}' does not have an allowed extension."
@@ -113,8 +105,6 @@ def edit_file_code(path: str, content: str) -> str:
 
 
 class WorkspaceExplorerNode(MultiAgentBase):
-    """Custom node that automatically explores the workspace before processing tasks"""
-
     def __init__(
         self,
         model,
@@ -143,35 +133,41 @@ class WorkspaceExplorerNode(MultiAgentBase):
         )
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
-        """Execute workspace exploration before main task"""
         try:
             agent = self._create_agent()
 
-            # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
-            # Extract structured feedback from state (contains summary + tasks)
+            # Get review feedback from invocation_state
+            review_data = (
+                invocation_state.get("review_data") if invocation_state else None
+            )
+            if not review_data or not isinstance(review_data, ReviewData):
+                review_data = ReviewData()
+                review_data.review_feedback = "No review feedback available"
+
+            # Format the review feedback for the agent
             structured_tasks = ""
+            if review_data.review_feedback:
+                structured_tasks = review_data.review_feedback
+            elif review_data.summary or review_data.tasks:
+                parts = []
+                if review_data.summary:
+                    parts.append(
+                        f"<review_summary>{review_data.summary}</review_summary>\n"
+                    )
+                if review_data.tasks:
+                    parts.append("📝 TASKS TO FIX:")
+                    for i, task_obj in enumerate(review_data.tasks, 1):
+                        files_str = (
+                            ", ".join(task_obj.files)
+                            if task_obj.files
+                            else "Multiple files"
+                        )
+                        parts.append(f"\n{i}. {task_obj.description}")
+                        parts.append(f"   Files: {files_str}")
+                structured_tasks = "\n".join(parts)
 
-            # Try to extract from review_agent (has review_output with get_feedback_for_revision)
-            if "state" in kwargs:
-                state = kwargs["state"]
-                if hasattr(state, "results") and "review_agent" in state.results:
-                    review_result_node = state.results["review_agent"]
-                    if hasattr(review_result_node, "result") and hasattr(
-                        review_result_node.result, "state"
-                    ):
-                        review_state = review_result_node.result.state
-                        if isinstance(review_state, dict):
-                            review_output = review_state.get("review_output")
-                            if review_output and hasattr(
-                                review_output, "get_feedback_for_revision"
-                            ):
-                                structured_tasks = (
-                                    review_output.get_feedback_for_revision()
-                                )
-
-            # Build enhanced prompt with workspace context, natural review, and structured tasks
             workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
 {exploration_result}
 """
@@ -185,10 +181,8 @@ class WorkspaceExplorerNode(MultiAgentBase):
 
             workspace_context += f"Now proceed with fixing the issues:\n{task}"
 
-            # Execute the main task with workspace context
             response = await agent.invoke_async(workspace_context)
 
-            # Return successful result
             agent_result = AgentResult(
                 stop_reason="end_turn",
                 state=Status.COMPLETED,

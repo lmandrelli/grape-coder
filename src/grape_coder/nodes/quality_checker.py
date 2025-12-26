@@ -11,8 +11,9 @@ from strands.multiagent.base import NodeResult, Status
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
-from grape_coder.agents.composer.reviewer import SCORE_CATEGORIES
 from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.review.reviewer import ReviewOutput, SCORE_CATEGORIES
+from grape_coder.agents.review.review_data import ReviewData, CategoryScore
 from grape_coder.tools.tool_limit_tracker import reset_agent_count
 
 
@@ -20,7 +21,7 @@ class QualityChecker(MultiAgentBase):
     """Custom node that evaluates review results and decides if revision is needed.
 
     This node:
-    1. Extracts the ReviewOutput from the reviewer's output
+    1. Receives ReviewData with category scores, summary, and tasks
     2. Checks if category scores meet minimum thresholds
        - Overall average >= 16
        - Code validity >= 17 (CRITICAL)
@@ -37,79 +38,38 @@ class QualityChecker(MultiAgentBase):
         self.name = "quality_checker"
         self.iteration = 0
 
-    def _extract_review_output(self, task, state):
-        """Extract ReviewOutput from the reviewer's output.
-
-        The reviewer node stores the ReviewOutput in the agent result's state.
-        """
-        # Import here to avoid circular imports
-        from grape_coder.agents.composer.reviewer import ReviewOutput
-
-        # Try to get the pre-parsed ReviewOutput from the graph state
-        # The ReviewValidatorNode stores it in its node result's state
-        review_result_node = None
-        if state:
-            if isinstance(state, dict) and "results" in state:
-                state_results = state["results"]
-                if state_results and "review_agent" in state_results:
-                    review_result_node = state_results["review_agent"]
-            elif hasattr(state, "results"):
-                state_results = state.results
-                if state_results and "review_agent" in state_results:
-                    review_result_node = state_results["review_agent"]
-
-        if review_result_node and hasattr(review_result_node, "result"):
-            agent_result = review_result_node.result
-            if (
-                hasattr(agent_result, "state")
-                and isinstance(agent_result.state, dict)
-                and "review_output" in agent_result.state
-            ):
-                return agent_result.state["review_output"]
-
-        # If we couldn't parse, return a default failed review with low scores
-        from grape_coder.agents.composer.reviewer import CategoryScore
-
-        return ReviewOutput(
-            category_scores=[
-                CategoryScore(name="user_prompt_compliance", score=10),
-                CategoryScore(name="code_validity", score=10),
-                CategoryScore(name="integration", score=10),
-                CategoryScore(name="responsiveness", score=10),
-                CategoryScore(name="best_practices", score=10),
-                CategoryScore(name="accessibility", score=10),
-            ],
-            summary="Quality checker failed to extract review data",
-            tasks=[],
-        )
-
     async def invoke_async(self, task, invocation_state=None, **kwargs):
-        """Evaluate the review result and decide next step.
-
-        Args:
-            task: The task/review feedback from the reviewer agent
-            invocation_state: State from previous invocations (GraphState)
-            **kwargs: Additional arguments (may contain 'state')
-
-        Returns:
-            MultiAgentResult with approved state and feedback for conditional edges
-        """
         self.iteration += 1
 
-        # Try to get the graph state from kwargs
-        graph_state = kwargs.get("state", invocation_state)
+        review_data = ReviewData()
 
-        # Extract and evaluate the review output
-        review_output = self._extract_review_output(task, graph_state)
-        approved = review_output.is_approved()
+        # Get data from invocation_state (shared between nodes)
+        if invocation_state:
+            # Get scores from score_evaluator
+            score_data = invocation_state.get("score_review_data")
+            if score_data and isinstance(score_data, ReviewData):
+                review_data.category_scores = score_data.category_scores
+                review_data.raw_output = score_data.raw_output
 
-        # Calculate average score
-        category_dict = {c.name: c.score for c in review_output.category_scores}
-        avg_score = (
-            sum(category_dict.values()) / len(category_dict) if category_dict else 0
-        )
+            # Get summary and tasks from task_generator
+            task_data = invocation_state.get("task_review_data")
+            if task_data and isinstance(task_data, ReviewData):
+                review_data.summary = task_data.summary
+                review_data.tasks = task_data.tasks
+                if not review_data.raw_output:
+                    review_data.raw_output = task_data.raw_output
 
-        # Auto-approve after MAX_ITERATIONS (10) review loops
+        # Fallback if no data found
+        if not review_data.category_scores and not review_data.summary:
+            review_data = ReviewData()
+            review_data.summary = (
+                "Quality checker received no review data from parallel agents"
+            )
+
+        approved = self._is_approved(review_data)
+        avg_score = review_data.average_score()
+
+        # Auto-approve after MAX_ITERATIONS
         if not approved and self.iteration >= self.MAX_ITERATIONS:
             approved = True
             msg = f"""### 🔄 ITERATION {self.iteration}: AUTO-APPROVED (Max iterations reached)
@@ -117,13 +77,12 @@ class QualityChecker(MultiAgentBase):
 Code review has reached the maximum of {self.MAX_ITERATIONS} iterations. The result will be accepted even if quality standards are not fully met.
 
 **Final review summary:**
-{review_output.summary}"""
-            feedback_for_code_agent = review_output.get_feedback_for_revision()
+{review_data.summary}"""
+            feedback_for_code_agent = review_data.review_feedback
         elif approved:
-            # Format category rows for markdown table
             category_rows = []
             for cat in SCORE_CATEGORIES:
-                score = category_dict.get(cat, 0)
+                score = review_data.get_score(cat)
                 status = "✅"
                 category_rows.append(
                     f"| {cat.replace('_', ' ').title()} | {score}/20 | {status} |"
@@ -134,7 +93,7 @@ Code review has reached the maximum of {self.MAX_ITERATIONS} iterations. The res
 All quality criteria met! The code has passed the quality check.
 
 **Review Summary:**
-{review_output.summary}
+{review_data.summary}
 
 **Category Scores:**
 
@@ -153,12 +112,11 @@ All quality criteria met! The code has passed the quality check.
 """
             feedback_for_code_agent = None
         else:
-            feedback = review_output.get_feedback_for_revision()
+            feedback = self._get_feedback_for_revision(review_data)
 
-            # Format category rows for markdown table with failures highlighted
             category_rows = []
             for cat in SCORE_CATEGORIES:
-                score = category_dict.get(cat, 0)
+                score = review_data.get_score(cat)
                 threshold = 17 if cat in ["code_validity", "integration"] else 15
                 status = "❌" if score < threshold else "✅"
                 category_rows.append(
@@ -184,21 +142,40 @@ The code revision agent will receive this feedback to implement fixes.
 """
             feedback_for_code_agent = feedback
 
-        # Reset tool counts for agents that will be revisited in the loop
+        print(msg)
+
+        # Reset tool counts
         reset_agent_count(AgentIdentifier.CODE_REVISION.value)
         reset_agent_count(AgentIdentifier.REVIEW.value)
 
+        # Update review_data with quality checker results
+        review_data.approved = approved
+        review_data.iteration = self.iteration
+        review_data.review_feedback = feedback_for_code_agent or ""
+
+        # Store in invocation_state for code_revision to access
+        if invocation_state is None:
+            invocation_state = {}
+        invocation_state["review_data"] = review_data
+
+        task_for_next_agent = (
+            feedback_for_code_agent
+            if feedback_for_code_agent
+            else "No revision needed - code approved"
+        )
+
         agent_result = AgentResult(
             stop_reason="end_turn",
-            message=Message(role="assistant", content=[ContentBlock(text=msg)]),
+            message=Message(
+                role="assistant", content=[ContentBlock(text=task_for_next_agent)]
+            ),
             metrics=EventLoopMetrics(),
             state={
                 "approved": approved,
                 "iteration": self.iteration,
                 "feedback_for_code_agent": feedback_for_code_agent,
-                "review_summary": review_output.summary,
-                "review_scores": category_dict,
-                "avg_score": avg_score,
+                "review_summary": review_data.summary,
+                "review_data": review_data,
             },
         )
 
@@ -213,4 +190,52 @@ The code revision agent will receive this feedback to implement fixes.
             },
             execution_count=1,
             execution_time=10,
+        )
+
+    def _is_approved(self, review_data: ReviewData) -> bool:
+        """Check if the review meets all approval criteria."""
+        if not review_data.category_scores:
+            return False
+
+        category_dict = {c.name: c.score for c in review_data.category_scores}
+        avg_score = sum(category_dict.values()) / len(category_dict)
+
+        # Check average score threshold
+        if avg_score < 16:
+            return False
+
+        # Check critical categories
+        if category_dict.get("code_validity", 0) < 17:
+            return False
+        if category_dict.get("integration", 0) < 17:
+            return False
+
+        # Check other categories
+        for cat, score in category_dict.items():
+            if cat not in ["code_validity", "integration"] and score < 15:
+                return False
+
+        return True
+
+    def _get_feedback_for_revision(self, review_data: ReviewData) -> str:
+        feedback_parts = []
+
+        for cat_score in review_data.category_scores:
+            threshold = 17 if cat_score.name in ["code_validity", "integration"] else 15
+            if cat_score.score < threshold:
+                feedback_parts.append(
+                    f"- **{cat_score.name.replace('_', ' ').title()}**: Score {cat_score.score}/20 (minimum {threshold})"
+                )
+
+        if review_data.tasks:
+            feedback_parts.append("\n**Specific Tasks:**")
+            for task in review_data.tasks:
+                files_str = ", ".join(task.files) if task.files else "Multiple files"
+                feedback_parts.append(f"📋 {task.description}")
+                feedback_parts.append(f"   Files: {files_str}")
+
+        return (
+            "\n".join(feedback_parts)
+            if feedback_parts
+            else "No specific issues identified, but score does not meet minimum requirements."
         )
