@@ -11,6 +11,7 @@ from strands.multiagent.base import NodeResult, Status
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
+from grape_coder.agents.composer.reviewer import SCORE_CATEGORIES
 from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.tools.tool_limit_tracker import reset_agent_count
 
@@ -29,7 +30,7 @@ class QualityChecker(MultiAgentBase):
     4. Resets tool counts for agents in the revision loop
     """
 
-    MAX_ITERATIONS = 10
+    MAX_ITERATIONS = 20
 
     def __init__(self):
         super().__init__()
@@ -111,41 +112,76 @@ class QualityChecker(MultiAgentBase):
         # Auto-approve after MAX_ITERATIONS (10) review loops
         if not approved and self.iteration >= self.MAX_ITERATIONS:
             approved = True
-            msg = f"""✅ ITERATION {self.iteration}: AUTO-APPROVED (Max iterations reached)
+            msg = f"""### 🔄 ITERATION {self.iteration}: AUTO-APPROVED (Max iterations reached)
 
-Code review has reached the maximum of {self.MAX_ITERATIONS} iterations.
-The result will be accepted even if quality standards are not fully met.
+Code review has reached the maximum of {self.MAX_ITERATIONS} iterations. The result will be accepted even if quality standards are not fully met.
 
-Final review summary: {review_output.summary}"""
+**Final review summary:**
+{review_output.summary}"""
             feedback_for_code_agent = review_output.get_feedback_for_revision()
         elif approved:
-            msg = f"""✅ ITERATION {self.iteration}: APPROVED
+            # Format category rows for markdown table
+            category_rows = []
+            for cat in SCORE_CATEGORIES:
+                score = category_dict.get(cat, 0)
+                status = "✅"
+                category_rows.append(
+                    f"| {cat.replace('_', ' ').title()} | {score}/20 | {status} |"
+                )
 
-All quality criteria met:
-- Average score >= 16/20
-- Code validity >= 17/20
-- Integration >= 17/20
-- All other categories >= 15/20
+            msg = f"""### ✅ ITERATION {self.iteration}: APPROVED
 
-Category Scores:
-- User Prompt Compliance: {category_dict.get("user_prompt_compliance", 0)}/20
-- Code Validity: {category_dict.get("code_validity", 0)}/20
-- Integration: {category_dict.get("integration", 0)}/20
-- Responsiveness: {category_dict.get("responsiveness", 0)}/20
-- Best Practices: {category_dict.get("best_practices", 0)}/20
-- Accessibility: {category_dict.get("accessibility", 0)}/20
+All quality criteria met! The code has passed the quality check.
 
-Average Score: {avg_score:.1f}/20
+**Review Summary:**
+{review_output.summary}
 
-{review_output.summary}"""
+**Category Scores:**
+
+| Category | Score | Status |
+|----------|-------|--------|
+{chr(10).join(category_rows)}
+
+**Overall Score: `{avg_score:.1f}/20`**
+
+---
+**Approval Requirements:**
+- ✅ Average score >= 16/20
+- ✅ Code validity >= 17/20 (CRITICAL)
+- ✅ Integration >= 17/20 (CRITICAL)
+- ✅ All other categories >= 15/20
+"""
             feedback_for_code_agent = None
         else:
             feedback = review_output.get_feedback_for_revision()
-            msg = f"""⚠️ ITERATION {self.iteration}: NEEDS REVISION
 
+            # Format category rows for markdown table with failures highlighted
+            category_rows = []
+            for cat in SCORE_CATEGORIES:
+                score = category_dict.get(cat, 0)
+                threshold = 17 if cat in ["code_validity", "integration"] else 15
+                status = "❌" if score < threshold else "✅"
+                category_rows.append(
+                    f"| {cat.replace('_', ' ').title()} | {score}/20 | {status} (min {threshold}) |"
+                )
+
+            msg = f"""### ⚠️ ITERATION {self.iteration}: NEEDS REVISION
+
+Quality check failed. The following categories did not meet requirements:
+
+**Category Scores:**
+
+| Category | Score | Status |
+|----------|-------|--------|
+{chr(10).join(category_rows)}
+
+**Overall Score: `{avg_score:.1f}/20`**
+
+**Issues to Fix:**
 {feedback}
 
-The code revision agent will receive this feedback to implement fixes."""
+The code revision agent will receive this feedback to implement fixes.
+"""
             feedback_for_code_agent = feedback
 
         # Reset tool counts for agents that will be revisited in the loop
