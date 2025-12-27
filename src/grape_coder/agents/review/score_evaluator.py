@@ -1,3 +1,8 @@
+"""
+TODO(Luca):
+    redo with logic like `orchestrator`
+"""
+
 from typing import Any
 
 from strands import Agent
@@ -6,18 +11,18 @@ from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
+from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
-from grape_coder.agents.identifiers import AgentIdentifier
 
+from .review_data import ReviewData
 from .reviewer import (
     SCORE_CATEGORIES,
-    ReviewValidationError,
     CategoryScore,
+    ReviewValidationError,
     extract_score_xml,
     parse_score_xml,
 )
-from .review_data import ReviewData
 
 
 class ScoreEvaluatorAgent(MultiAgentBase):

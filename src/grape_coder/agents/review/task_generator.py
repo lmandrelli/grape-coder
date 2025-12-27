@@ -1,3 +1,9 @@
+"""
+TODO(Luca):
+    redo with logic like `orchestrator`
+    need add least <tasks>[...]</tasks>
+"""
+
 from typing import Any
 
 from strands import Agent
@@ -10,8 +16,8 @@ from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
 
-from .reviewer import ReviewValidationError, Task, extract_tasks_xml, parse_tasks_xml
 from .review_data import ReviewData
+from .reviewer import ReviewValidationError, Task, extract_tasks_xml, parse_tasks_xml
 
 
 class TaskGeneratorAgent(MultiAgentBase):

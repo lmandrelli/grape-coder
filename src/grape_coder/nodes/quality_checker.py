@@ -1,4 +1,8 @@
-"""Quality Checker Node for the review loop.
+"""
+TODO(Luca):
+    need to be moved in review folder
+
+Quality Checker Node for the review loop.
 
 This node checks the review result and determines if the code needs revision
 or if it can proceed to completion. It evaluates the category scores from the review
@@ -12,8 +16,8 @@ from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
 from grape_coder.agents.identifiers import AgentIdentifier
-from grape_coder.agents.review.reviewer import ReviewOutput, SCORE_CATEGORIES
-from grape_coder.agents.review.review_data import ReviewData, CategoryScore
+from grape_coder.agents.review.review_data import CategoryScore, ReviewData
+from grape_coder.agents.review.reviewer import SCORE_CATEGORIES, ReviewOutput
 from grape_coder.tools.tool_limit_tracker import reset_agent_count
 
 
@@ -43,28 +47,7 @@ class QualityChecker(MultiAgentBase):
 
         review_data = ReviewData()
 
-        # Get data from invocation_state (shared between nodes)
-        if invocation_state:
-            # Get scores from score_evaluator
-            score_data = invocation_state.get("score_review_data")
-            if score_data and isinstance(score_data, ReviewData):
-                review_data.category_scores = score_data.category_scores
-                review_data.raw_output = score_data.raw_output
-
-            # Get summary and tasks from task_generator
-            task_data = invocation_state.get("task_review_data")
-            if task_data and isinstance(task_data, ReviewData):
-                review_data.summary = task_data.summary
-                review_data.tasks = task_data.tasks
-                if not review_data.raw_output:
-                    review_data.raw_output = task_data.raw_output
-
-        # Fallback if no data found
-        if not review_data.category_scores and not review_data.summary:
-            review_data = ReviewData()
-            review_data.summary = (
-                "Quality checker received no review data from parallel agents"
-            )
+        # TODO(Luca): get score from text in xml, like in task filtering
 
         approved = self._is_approved(review_data)
         avg_score = review_data.average_score()
