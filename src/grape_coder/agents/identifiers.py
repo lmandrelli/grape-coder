@@ -29,6 +29,8 @@ class AgentIdentifier(str, Enum):
     SVG = "svg_generator"
 
     REVIEW = "review_agent"
+    SCORE_EVALUATOR = "score_evaluator_agent"
+    REVIEW_TASK_GENERATOR = "review_task_generator"
 
     # Code agent
     CODE = "code_agent"
@@ -57,6 +59,8 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.CODE_REVISION: "Code revision agent for fixing review feedback",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
     AgentIdentifier.REVIEW: "Code review and quality assurance agent",
+    AgentIdentifier.SCORE_EVALUATOR: "Score evaluator agent for code quality assessment",
+    AgentIdentifier.REVIEW_TASK_GENERATOR: "Task generator agent for converting reviews to actionable tasks",
 }
 
 
@@ -100,6 +104,8 @@ AGENT_TOOL_LIMITS: Dict[AgentIdentifier, int] = {
     AgentIdentifier.CODE_REVISION: 50,
     AgentIdentifier.MONO_AGENT: 150,
     AgentIdentifier.REVIEW: 50,
+    AgentIdentifier.SCORE_EVALUATOR: 30,
+    AgentIdentifier.REVIEW_TASK_GENERATOR: 30,
 }
 
 

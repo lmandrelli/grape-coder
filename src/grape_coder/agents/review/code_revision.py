@@ -21,16 +21,18 @@ from grape_coder.tools.work_path import (
     set_work_path,
 )
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
-from .review_data import ReviewData
 
 
-def create_code_revision_agent(work_path: str, agent_id: AgentIdentifier):
+def create_code_revision_agent(
+    work_path: str, agent_id: AgentIdentifier
+) -> MultiAgentBase:
+    """Create a code revision agent that fixes code based on review feedback."""
     set_work_path(work_path)
 
     config_manager = get_config_manager()
     model = cast(Model, config_manager.get_model(agent_id))
 
-    system_prompt = f"""You are a Code Revision Specialist working in a multi-agent web development system.
+    system_prompt = """You are a Code Revision Specialist working in a multi-agent web development system.
 
 CONTEXT:
 A code reviewer has analyzed the website code and provided feedback containing:
@@ -69,11 +71,11 @@ Available tools:
 - grep_files: Search for patterns in files
 - glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL
+- search: Search the web for information
 
-The workspace exploration will be automatically provided to you at the start.
-"""
+The workspace exploration will be automatically provided to you at the start."""
 
-    return WorkspaceExplorerNode(
+    return CodeRevisionNode(
         model=model,
         system_prompt=system_prompt,
         work_path=work_path,
@@ -97,6 +99,7 @@ The workspace exploration will be automatically provided to you at the start.
 
 @tool
 def edit_file_code(path: str, content: str) -> str:
+    """Edit or create a web file. Only .html, .js, .css, .svg, .json and .md files are allowed."""
     allowed_extensions = (".html", ".js", ".css", ".svg", ".json", ".md")
     if not path.endswith(allowed_extensions):
         return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .svg, .json, .md. The path '{path}' does not have an allowed extension."
@@ -104,7 +107,9 @@ def edit_file_code(path: str, content: str) -> str:
     return edit_file(path, content)
 
 
-class WorkspaceExplorerNode(MultiAgentBase):
+class CodeRevisionNode(MultiAgentBase):
+    """Custom node that handles code revision with workspace exploration."""
+
     def __init__(
         self,
         model,
@@ -133,53 +138,19 @@ class WorkspaceExplorerNode(MultiAgentBase):
         )
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
+        """Execute workspace exploration before processing revision tasks"""
         try:
             agent = self._create_agent()
 
             exploration_result = list_files(path=self.work_path, recursive=True)
 
-            # Get review feedback from invocation_state
-            review_data = (
-                invocation_state.get("review_data") if invocation_state else None
-            )
-            if not review_data or not isinstance(review_data, ReviewData):
-                review_data = ReviewData()
-                review_data.review_feedback = "No review feedback available"
-
-            # Format the review feedback for the agent
-            structured_tasks = ""
-            if review_data.review_feedback:
-                structured_tasks = review_data.review_feedback
-            elif review_data.summary or review_data.tasks:
-                parts = []
-                if review_data.summary:
-                    parts.append(
-                        f"<review_summary>{review_data.summary}</review_summary>\n"
-                    )
-                if review_data.tasks:
-                    parts.append("📝 TASKS TO FIX:")
-                    for i, task_obj in enumerate(review_data.tasks, 1):
-                        files_str = (
-                            ", ".join(task_obj.files)
-                            if task_obj.files
-                            else "Multiple files"
-                        )
-                        parts.append(f"\n{i}. {task_obj.description}")
-                        parts.append(f"   Files: {files_str}")
-                structured_tasks = "\n".join(parts)
-
             workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
 {exploration_result}
-"""
 
-            if structured_tasks:
-                workspace_context += f"""
-=== REVIEW FEEDBACK ===
-{structured_tasks}
+REVISION TASKS TO COMPLETE:
+{task}
 
-"""
-
-            workspace_context += f"Now proceed with fixing the issues:\n{task}"
+Please fix all the issues mentioned in the revision tasks. Focus on the most important issues first."""
 
             response = await agent.invoke_async(workspace_context)
 
@@ -197,7 +168,7 @@ class WorkspaceExplorerNode(MultiAgentBase):
             return MultiAgentResult(
                 status=Status.COMPLETED,
                 results={
-                    "workspace_explorer": NodeResult(
+                    "code_revision": NodeResult(
                         result=agent_result, status=Status.COMPLETED
                     )
                 },
@@ -217,7 +188,7 @@ class WorkspaceExplorerNode(MultiAgentBase):
             return MultiAgentResult(
                 status=Status.FAILED,
                 results={
-                    "workspace_explorer": NodeResult(
+                    "code_revision": NodeResult(
                         result=agent_result, status=Status.FAILED
                     )
                 },

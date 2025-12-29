@@ -1,66 +1,113 @@
-"""
-TODO(Luca):
-    redo with logic like `orchestrator`
-"""
-
 from typing import Any
 
 from strands import Agent
-from strands.agent import AgentResult
-from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
-from strands.telemetry.metrics import EventLoopMetrics
-from strands.types.content import ContentBlock, Message
+from strands.multiagent.base import MultiAgentBase
+from rich.console import Console
+from rich.table import Table
 
-from grape_coder.agents.identifiers import AgentIdentifier
+from grape_coder.agents.common import (
+    XMLValidatorNode,
+    XMLValidationError,
+    extract_scores_from_xml,
+)
+from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
+from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
-from .review_data import ReviewData
-from .reviewer import (
-    SCORE_CATEGORIES,
-    CategoryScore,
-    ReviewValidationError,
-    extract_score_xml,
-    parse_score_xml,
-)
+console = Console()
 
 
-class ScoreEvaluatorAgent(MultiAgentBase):
-    def __init__(
-        self,
-        agent: Agent,
-        max_retries: int = 3,
-        node_name: str = "score_evaluator_agent",
-    ):
-        super().__init__()
-        self.agent = agent
-        self.max_retries = max_retries
-        self.node_name = node_name
+def display_scores_table(scores: dict) -> None:
+    """Display scores in a rich formatted table."""
+    table = Table(title="Code Review Scores")
 
-    async def invoke_async(
-        self,
-        task: str | list[ContentBlock],
-        invocation_state: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> MultiAgentResult:
-        try:
-            review_text = str(task)
-            last_error = None
+    table.add_column("Category", style="cyan", no_wrap=True)
+    table.add_column("Score", style="magenta")
+    table.add_column("Status", style="green")
 
-            for attempt in range(self.max_retries + 1):
-                try:
-                    if attempt == 0:
-                        prompt = f"""REVIEW TO EVALUATE:
-<review>
-{review_text}
-</review>
+    critical_threshold = 17
+    standard_threshold = 15
 
-Provide your evaluation in the following XML format:
+    category_names = {
+        "code_validity": "Code Validity",
+        "integration": "Integration",
+        "responsiveness": "Responsiveness",
+        "best_practices": "Best Practices",
+        "accessibility": "Accessibility",
+    }
 
+    for category, name in category_names.items():
+        score = scores.get(category, 0)
+        score_str = f"{score}/20"
+
+        if category in ["code_validity", "integration"]:
+            if score >= critical_threshold:
+                status = "✓ PASS (Critical)"
+                style = "green"
+            else:
+                status = "✗ FAIL (Critical)"
+                style = "red"
+        else:
+            if score >= standard_threshold:
+                status = "✓ PASS"
+                style = "green"
+            else:
+                status = "✗ FAIL"
+                style = "yellow"
+
+        table.add_row(name, score_str, f"[{style}]{status}[/]")
+
+    console.print(table)
+
+
+def create_score_evaluator_agent() -> MultiAgentBase:
+    """Create a score evaluator agent that assesses code quality."""
+
+    config_manager = get_config_manager()
+    model = config_manager.get_model(AgentIdentifier.SCORE_EVALUATOR)
+
+    system_prompt = """You are a Score Evaluator. You receive natural language code reviews and evaluate the quality of the code in different categories.
+
+Your role is to assess the review and assign scores from 0 to 20 for each category.
+
+CATEGORIES:
+1. CODE_VALIDITY: Is the code syntactically correct and free of bugs?
+   - Check for syntax errors, missing elements, broken references
+   - Are HTML tags properly closed?
+   - Are CSS and JavaScript syntax correct?
+   - This is a CRITICAL category - must be 17+ for approval
+
+2. INTEGRATION: Are all files properly linked and working together?
+   - Are CSS files linked in HTML?
+   - Are JavaScript files properly included?
+   - Are SVG files correctly referenced?
+   - Will the browser handle all resources correctly?
+   - This is a CRITICAL category - must be 17+ for approval
+
+3. RESPONSIVENESS: Does the layout work across different screen sizes?
+   - Mobile, tablet, desktop layouts
+   - Media queries, flexible grids
+   - Touch-friendly elements on mobile
+   - Must be 15+ for approval
+
+4. BEST_PRACTICES: Does the code follow modern web development standards?
+   - Semantic HTML
+   - Modern CSS (Flexbox, Grid, CSS Variables)
+   - Proper use of classes and IDs
+   - Code organization and readability
+   - Must be 15+ for approval
+
+5. ACCESSIBILITY: Is the site accessible to users with disabilities?
+   - Alt text for images
+   - Proper heading hierarchy
+   - Focus states for keyboard navigation
+   - Color contrast
+   - Must be 15+ for approval
+
+CRITICAL INSTRUCTION:
+Output your evaluation in the required XML format :
 <review_scores>
-    <user_prompt_compliance>
-        <score>0-20</score>
-    </user_prompt_compliance>
     <code_validity>
         <score>0-20</score>
     </code_validity>
@@ -77,224 +124,114 @@ Provide your evaluation in the following XML format:
         <score>0-20</score>
     </accessibility>
 </review_scores>"""
-                    else:
-                        prompt = f"""Your previous score evaluation attempt had formatting issues:
-
-<last_attempt>
-{last_error}
-</last_attempt>
-
-Please generate the score evaluation again using the correct XML format. Ensure:
-1. Root element is <review_scores>
-2. All 6 categories are present: user_prompt_compliance, code_validity, integration, responsiveness, best_practices, accessibility
-3. Each category has a <score> element with an integer between 0 and 20
-
-Original review:
-<review>
-{review_text}
-</review>"""
-
-                    response = await self.agent.invoke_async(prompt)
-                    response_text = str(response)
-
-                    xml_content = extract_score_xml(response_text)
-                    category_scores = parse_score_xml(xml_content)
-
-                    # Create ReviewData with scores
-                    review_data = ReviewData(
-                        category_scores=category_scores, raw_output=response_text
-                    )
-
-                    # Store in invocation_state for sharing with other nodes
-                    if invocation_state is None:
-                        invocation_state = {}
-                    invocation_state["score_review_data"] = review_data
-
-                    agent_result = AgentResult(
-                        stop_reason="end_turn",
-                        state={"review_data": review_data},
-                        metrics=EventLoopMetrics(),
-                        message=Message(
-                            role="assistant", content=[ContentBlock(text=response_text)]
-                        ),
-                    )
-
-                    agent_result = AgentResult(
-                        stop_reason="end_turn",
-                        state={"review_data": review_data},
-                        metrics=EventLoopMetrics(),
-                        message=Message(
-                            role="assistant", content=[ContentBlock(text=response_text)]
-                        ),
-                    )
-
-                    return MultiAgentResult(
-                        status=Status.COMPLETED,
-                        results={
-                            self.node_name: NodeResult(
-                                result=agent_result, status=Status.COMPLETED
-                            )
-                        },
-                    )
-
-                except ReviewValidationError as e:
-                    last_error = str(e)
-                    if attempt == self.max_retries:
-                        default_scores = [
-                            CategoryScore(name=cat, score=10)
-                            for cat in SCORE_CATEGORIES
-                        ]
-                        review_data = ReviewData(
-                            category_scores=default_scores,
-                            raw_output=f"Score evaluation failed after retries. Error: {str(e)}",
-                        )
-
-                        # Store in invocation_state
-                        if invocation_state is None:
-                            invocation_state = {}
-                        invocation_state["score_review_data"] = review_data
-
-                        agent_result = AgentResult(
-                            stop_reason="end_turn",
-                            state={"review_data": review_data},
-                            metrics=EventLoopMetrics(),
-                            message=Message(
-                                role="assistant",
-                                content=[
-                                    ContentBlock(
-                                        text=f"Score evaluation failed after retries. Using default scores. Error: {str(e)}"
-                                    )
-                                ],
-                            ),
-                        )
-
-                        agent_result = AgentResult(
-                            stop_reason="end_turn",
-                            state={"review_data": review_data},
-                            metrics=EventLoopMetrics(),
-                            message=Message(
-                                role="assistant",
-                                content=[
-                                    ContentBlock(
-                                        text=f"Score evaluation failed after retries. Using default scores. Error: {str(e)}"
-                                    )
-                                ],
-                            ),
-                        )
-                        return MultiAgentResult(
-                            status=Status.COMPLETED,
-                            results={
-                                self.node_name: NodeResult(
-                                    result=agent_result, status=Status.COMPLETED
-                                )
-                            },
-                        )
-                    continue
-
-            agent_result = AgentResult(
-                stop_reason="guardrail_intervened",
-                state=Status.FAILED,
-                metrics=EventLoopMetrics(),
-                message=Message(
-                    role="assistant",
-                    content=[ContentBlock(text="Score evaluation failed")],
-                ),
-            )
-            return MultiAgentResult(
-                status=Status.FAILED,
-                results={
-                    self.node_name: NodeResult(
-                        result=agent_result, status=Status.FAILED
-                    )
-                },
-            )
-
-        except Exception as e:
-            agent_result = AgentResult(
-                stop_reason="guardrail_intervened",
-                state=Status.FAILED,
-                metrics=EventLoopMetrics(),
-                message=Message(
-                    role="assistant",
-                    content=[ContentBlock(text=f"Error: {str(e)}")],
-                ),
-            )
-            return MultiAgentResult(
-                status=Status.FAILED,
-                results={
-                    self.node_name: NodeResult(
-                        result=agent_result, status=Status.FAILED
-                    )
-                },
-            )
-
-
-def create_score_evaluator_agent() -> ScoreEvaluatorAgent:
-    config_manager = get_config_manager()
-    model = config_manager.get_model(AgentIdentifier.REVIEW)
-
-    system_prompt = """You are a Score Evaluator. You receive natural language code reviews and evaluate the quality of the code in different categories.
-
-Your role is to assess the review and assign scores from 0 to 20 for each category.
-
-CATEGORIES:
-1. USER_PROMPT_COMPLIANCE: Does the code fulfill the original user requirements?
-   - Don't be too harsh if the prompt was vague or ambiguous
-   - Focus on whether the core intent was addressed
-   - 15+ is acceptable for this category
-
-2. CODE_VALIDITY: Is the code syntactically correct and free of bugs?
-   - Check for syntax errors, missing elements, broken references
-   - Are HTML tags properly closed?
-   - Are CSS and JavaScript syntax correct?
-   - This is a CRITICAL category - must be 17+ for approval
-
-3. INTEGRATION: Are all files properly linked and working together?
-   - Are CSS files linked in HTML?
-   - Are JavaScript files properly included?
-   - Are SVG files correctly referenced?
-   - Will the browser handle all resources correctly?
-   - This is a CRITICAL category - must be 17+ for approval
-
-4. RESPONSIVENESS: Does the layout work across different screen sizes?
-   - Mobile, tablet, desktop layouts
-   - Media queries, flexible grids
-   - Touch-friendly elements on mobile
-   - Must be 15+ for approval
-
-5. BEST_PRACTICES: Does the code follow modern web development standards?
-   - Semantic HTML
-   - Modern CSS (Flexbox, Grid, CSS Variables)
-   - Proper use of classes and IDs
-   - Code organization and readability
-   - Must be 15+ for approval
-
-6. ACCESSIBILITY: Is the site accessible to users with disabilities?
-   - Alt text for images
-   - Proper heading hierarchy
-   - Focus states for keyboard navigation
-   - Color contrast
-   - Must be 15+ for approval
-
-APPROVAL THRESHOLDS:
-- Overall average score must be >= 16
-- Code validity must be >= 17 (CRITICAL)
-- Integration must be >= 17 (CRITICAL)
-- All other categories must be >= 15
-
-CRITICAL INSTRUCTION:
-Evaluate the review objectively and assign appropriate scores based on the quality criteria and approval thresholds. Output your evaluation in the required XML format."""
 
     agent = Agent(
         model=model,
-        tools=[],
         system_prompt=system_prompt,
-        name="score_evaluator",
-        description="Evaluates code quality scores from natural language reviews",
+        name=AgentIdentifier.SCORE_EVALUATOR,
+        description=get_agent_description(AgentIdentifier.SCORE_EVALUATOR),
         hooks=[
-            get_tool_tracker(AgentIdentifier.REVIEW),
-            get_conversation_tracker(AgentIdentifier.REVIEW),
+            get_tool_tracker(AgentIdentifier.SCORE_EVALUATOR),
+            get_conversation_tracker(AgentIdentifier.SCORE_EVALUATOR),
+            get_tool_limit_hook(AgentIdentifier.SCORE_EVALUATOR),
         ],
+        callback_handler=None,
     )
 
-    return ScoreEvaluatorAgent(agent, max_retries=3, node_name="score_evaluator_agent")
+    return XMLValidatorNode(
+        agent=agent,
+        validate_fn=validate_scores,
+        extract_fn=extract_scores_xml,
+        success_callback=display_scores_callback,
+    )
+
+
+def display_scores_callback(xml_content: str) -> None:
+    """Callback to display scores table after successful validation."""
+    scores = extract_scores_from_xml(xml_content)
+    if scores:
+        display_scores_table(scores)
+
+
+def extract_scores_xml(content: str) -> str:
+    """Extract XML content from score evaluator response.
+
+    Searches for <review_scores> tags in the content.
+
+    Args:
+        content: Raw agent response content.
+
+    Returns:
+        Extracted XML string.
+    """
+    import re
+
+    scores_pattern = r"<review_scores>.*?</review_scores>"
+
+    scores_match = re.search(scores_pattern, content, re.DOTALL)
+
+    if scores_match:
+        return scores_match.group(0)
+
+    xml_pattern = r"<[^>]+>.*?</[^>]+>"
+    xml_match = re.search(xml_pattern, content, re.DOTALL)
+
+    if xml_match:
+        return xml_match.group(0)
+
+    return content
+
+
+def validate_scores(xml_content: str) -> str:
+    """Validate XML scores format from score evaluator agent.
+
+    Validates that the XML contains required <review_scores> section
+    with all required score categories.
+
+    Args:
+        xml_content: XML string containing review scores.
+
+    Returns:
+        Validation success message.
+
+    Raises:
+        XMLValidationError: If XML structure is invalid.
+    """
+    import xml.etree.ElementTree as ET
+
+    try:
+        if "<review_scores>" in xml_content:
+            start = xml_content.find("<review_scores>")
+            end = xml_content.find("</review_scores>") + len("</review_scores>")
+
+            scores_section = xml_content[start:end]
+
+            root = ET.fromstring(scores_section)
+            if root.tag != "review_scores":
+                raise XMLValidationError(
+                    "Error: Scores section must have 'review_scores' as root element"
+                )
+        else:
+            root = ET.fromstring(xml_content)
+            if root.tag != "review_scores":
+                raise XMLValidationError("Error: Root element must be 'review_scores'")
+
+        required_categories = [
+            "code_validity",
+            "integration",
+            "responsiveness",
+            "best_practices",
+            "accessibility",
+        ]
+        found_categories = [child.tag for child in root]
+
+        missing = [cat for cat in required_categories if cat not in found_categories]
+        if missing:
+            raise XMLValidationError(
+                f"Warning: Missing score categories: {', '.join(missing)}"
+            )
+
+        return f"Validation passed: scores for {len(found_categories)} categories"
+
+    except ET.ParseError as e:
+        raise XMLValidationError(f"Error: Invalid XML format - {str(e)}")

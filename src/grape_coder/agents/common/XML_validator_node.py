@@ -19,7 +19,9 @@ class XMLValidatorNode(MultiAgentBase):
             or raises XMLValidationError on failure.
         extract_fn: Callable that extracts XML string from agent response content.
         max_retries: Maximum number of retry attempts on validation failure.
-                     Defaults to 3.
+                      Defaults to 3.
+        success_callback: Optional callable to execute after successful validation.
+                         Receives the validated XML content as argument.
     """
 
     def __init__(
@@ -28,12 +30,14 @@ class XMLValidatorNode(MultiAgentBase):
         validate_fn: Callable[[str], str],
         extract_fn: Callable[[str], str],
         max_retries: int = 3,
+        success_callback: Callable[[str], None] | None = None,
     ):
         super().__init__()
         self.agent = agent
         self.validate_fn = validate_fn
         self.extract_fn = extract_fn
         self.max_retries = max_retries
+        self.success_callback = success_callback
 
     async def invoke_async(
         self,
@@ -69,6 +73,9 @@ Please fix the XML and provide a corrected version. Ensure the XML is well-forme
                 xml_to_validate = self.extract_fn(xml_content)
 
                 self.validate_fn(xml_to_validate)
+
+                if self.success_callback:
+                    self.success_callback(xml_to_validate)
 
                 agent_result = AgentResult(
                     stop_reason="end_turn",
