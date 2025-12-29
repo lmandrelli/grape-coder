@@ -1,11 +1,7 @@
-from typing import Any
-
 from strands import Agent
-from strands.agent import AgentResult
-from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult, Status
-from strands.telemetry.metrics import EventLoopMetrics
-from strands.types.content import ContentBlock, Message
+from strands.multiagent.base import MultiAgentBase
 
+from grape_coder.agents.common import XMLValidatorNode, XMLValidationError
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
@@ -15,11 +11,9 @@ from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 def create_orchestrator_agent() -> MultiAgentBase:
     """Create an orchestrator agent that distributes tasks to specialized agents"""
 
-    # Get model using the config manager
     config_manager = get_config_manager()
     model = config_manager.get_model(AgentIdentifier.ORCHESTRATOR)
 
-    # Create agent with task distribution tools
     system_prompt = f"""You are the orchestrator and entry point of a multi-agent system for website creation.
 
     CONTEXT:
@@ -64,10 +58,10 @@ def create_orchestrator_agent() -> MultiAgentBase:
        - Examples: hero headlines, about sections, product descriptions, CTAs, footer text
 
     4. {AgentIdentifier.SVG}: Graphics Designer
-        - Creates SVG graphics, icons, logos, and illustrations
-        - Generates optimized, accessible, and scalable vector graphics
-        - Outputs: .svg files only
-        - Examples: logos, icons, illustrations, decorative elements, charts
+         - Creates SVG graphics, icons, logos, and illustrations
+         - Generates optimized, accessible, and scalable vector graphics
+         - Outputs: .svg files only
+         - Examples: logos, icons, illustrations, decorative elements, charts
 
     5. {AgentIdentifier.CODE}: HTML Integrator
        - Takes CSS and content files and creates the final HTML structure
@@ -114,7 +108,6 @@ def create_orchestrator_agent() -> MultiAgentBase:
     <{AgentIdentifier.SVG}>
         <task>Specific graphics/illustration task</task>
         <task>Another graphics task</task>
-        ...
     </{AgentIdentifier.SVG}>
     <{AgentIdentifier.CODE}>
         <task>HTML integration task (usually one main task to combine everything)</task>
@@ -173,196 +166,69 @@ def create_orchestrator_agent() -> MultiAgentBase:
         callback_handler=None,
     )
 
-    return XMLValidatorNode(agent=agent)
+    return XMLValidatorNode(
+        agent=agent,
+        validate_fn=validate_distribution,
+        extract_fn=orchestrator_xml_extractor,
+    )
 
 
-class XMLValidatorNode(MultiAgentBase):
-    """Custom node type that validates XML with retry logic"""
+def orchestrator_xml_extractor(content: str) -> str:
+    """Extract XML content from orchestrator agent response.
 
-    def __init__(self, agent: Agent, max_retries: int = 3):
-        super().__init__()
-        self.agent = agent
-        self.max_retries = max_retries
+    Searches for <context> and <task_distribution> tags in the content.
+    Falls back to any XML-like tags if specific patterns are not found.
 
-    async def invoke_async(
-        self,
-        task: str | list[ContentBlock],
-        invocation_state: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> MultiAgentResult:
-        """Execute XML validation with retry logic"""
-        initial_prompt = task if isinstance(task, str) else str(task)
-        current_prompt = initial_prompt
-        last_error = None
-        xml_content = None
+    Args:
+        content: Raw agent response content.
 
-        for attempt in range(self.max_retries + 1):
-            try:
-                # Ask model to build XML
-                if attempt == 0:
-                    # First attempt - just the initial prompt
-                    prompt = str(current_prompt)
-                else:
-                    # Retry attempts - include previous attempt and error
-                    prompt = f"""Your previous attempt:
-<last_attempt>
-{current_prompt}
-</last_attempt>
+    Returns:
+        Extracted XML string.
+    """
+    import re
 
-Error encountered:
-<error>
-{last_error}
-</error>
+    context_pattern = r"<context>.*?</context>"
+    task_pattern = r"<task_distribution>.*?</task_distribution>"
 
-Please fix the XML and provide a corrected version. Ensure the XML is well-formed and follows the required structure."""
+    context_match = re.search(context_pattern, content, re.DOTALL)
+    task_match = re.search(task_pattern, content, re.DOTALL)
 
-                # Get model response
-                response = await self.agent.invoke_async(prompt)
-                xml_content = str(response)
+    if context_match and task_match:
+        return context_match.group(0) + "\n" + task_match.group(0)
+    elif task_match:
+        return task_match.group(0)
 
-                # Try to extract XML from response
-                xml_to_validate = self._extract_xml(xml_content)
+    xml_pattern = r"<[^>]+>.*?</[^>]+>"
+    xml_match = re.search(xml_pattern, content, re.DOTALL)
 
-                # Validate XML
-                validate_distribution(xml_to_validate)
+    if xml_match:
+        return xml_match.group(0)
 
-                # If we get here, XML is valid
-                agent_result = AgentResult(
-                    stop_reason="end_turn",
-                    state=Status.COMPLETED,
-                    metrics=EventLoopMetrics(),
-                    message=Message(
-                        role="assistant", content=[ContentBlock(text=xml_to_validate)]
-                    ),
-                )
-
-                return MultiAgentResult(
-                    status=Status.COMPLETED,
-                    results={
-                        "xml_validator": NodeResult(
-                            result=agent_result, status=Status.COMPLETED
-                        )
-                    },
-                )
-
-            except XMLValidationError as e:
-                last_error = str(e)
-                current_prompt = ""
-                if xml_content is not None:
-                    current_prompt = xml_content
-
-                if attempt == self.max_retries:
-                    # Max retries reached, send initial prompt to next nodes
-                    agent_result = AgentResult(
-                        stop_reason="guardrail_intervened",
-                        state=Status.COMPLETED,
-                        metrics=EventLoopMetrics(),
-                        message=Message(
-                            role="assistant",
-                            content=[ContentBlock(text=initial_prompt)],
-                        ),
-                    )
-
-                    return MultiAgentResult(
-                        status=Status.COMPLETED,
-                        results={
-                            "xml_validator": NodeResult(
-                                result=agent_result, status=Status.COMPLETED
-                            )
-                        },
-                    )
-
-                # Continue to next retry
-                continue
-
-            except Exception as e:
-                # Other unexpected errors
-                agent_result = AgentResult(
-                    stop_reason="guardrail_intervened",
-                    state=Status.FAILED,
-                    metrics=EventLoopMetrics(),
-                    message=Message(
-                        role="assistant",
-                        content=[ContentBlock(text=f"Error: {str(e)}")],
-                    ),
-                )
-
-                return MultiAgentResult(
-                    status=Status.FAILED,
-                    results={
-                        "xml_validator": NodeResult(
-                            result=agent_result, status=Status.FAILED
-                        )
-                    },
-                )
-
-        # Fallback return (should not be reached due to loop logic)
-        agent_result = AgentResult(
-            stop_reason="guardrail_intervened",
-            state=Status.FAILED,
-            metrics=EventLoopMetrics(),
-            message=Message(
-                role="assistant",
-                content=[ContentBlock(text=initial_prompt)],
-            ),
-        )
-        return MultiAgentResult(
-            status=Status.FAILED,
-            results={
-                "xml_validator": NodeResult(result=agent_result, status=Status.FAILED)
-            },
-        )
-
-    def _extract_xml(self, content: str) -> str:
-        """Extract XML content from model response"""
-        import re
-
-        # Try to find the complete XML structure with both context and task_distribution
-        # Look for <context> followed by <task_distribution>
-        context_pattern = r"<context>.*?</context>"
-        task_pattern = r"<task_distribution>.*?</task_distribution>"
-
-        context_match = re.search(context_pattern, content, re.DOTALL)
-        task_match = re.search(task_pattern, content, re.DOTALL)
-
-        if context_match and task_match:
-            # Return both sections together
-            return context_match.group(0) + "\n" + task_match.group(0)
-        elif task_match:
-            # Fallback to just task_distribution if context is missing
-            return task_match.group(0)
-
-        # If no specific tags found, try to find any XML-like content
-        xml_pattern = r"<[^>]+>.*?</[^>]+>"
-        xml_match = re.search(xml_pattern, content, re.DOTALL)
-
-        if xml_match:
-            return xml_match.group(0)
-
-        # Return original content if no XML found
-        return content
-
-
-class XMLValidationError(Exception):
-    """Custom exception for XML validation errors"""
+    return content
 
 
 def validate_distribution(xml_distribution: str) -> str:
-    """Validate the XML distribution format with context and task distribution
+    """Validate XML task distribution format from orchestrator agent.
+
+    Validates that the XML contains required <context> and <task_distribution>
+    sections with valid structure and all required agent tags.
 
     Args:
-        xml_distribution: XML string containing context and task distribution
+        xml_distribution: XML string containing context and task distribution.
+
+    Returns:
+        Validation success message with task count.
+
+    Raises:
+        XMLValidationError: If XML structure is invalid or required sections are missing.
     """
     import xml.etree.ElementTree as ET
 
     try:
-        # Handle the case where we have both context and task_distribution
-        # Check if the content contains both sections
         if (
             "<context>" in xml_distribution
             and "<task_distribution>" in xml_distribution
         ):
-            # Extract and validate both sections
             context_match = xml_distribution.find("<context>")
             context_end = xml_distribution.find("</context>") + len("</context>")
             task_start = xml_distribution.find("<task_distribution>")
@@ -370,14 +236,12 @@ def validate_distribution(xml_distribution: str) -> str:
             context_section = xml_distribution[context_match:context_end]
             task_section = xml_distribution[task_start:]
 
-            # Validate context section
             context_root = ET.fromstring(context_section)
             if context_root.tag != "context":
                 raise XMLValidationError(
                     "Error: Context section must have 'context' as root element"
                 )
 
-            # Validate task distribution section
             task_root = ET.fromstring(task_section)
             if task_root.tag != "task_distribution":
                 raise XMLValidationError(
@@ -386,7 +250,6 @@ def validate_distribution(xml_distribution: str) -> str:
 
             root = task_root
         else:
-            # Fallback to old format with just task_distribution
             root = ET.fromstring(xml_distribution)
             if root.tag != "task_distribution":
                 return "Error: Root element must be 'task_distribution'"
