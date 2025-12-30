@@ -16,7 +16,7 @@ from grape_coder.agents.review.code_revision import create_code_revision_agent
 from grape_coder.agents.review.reviewer import create_reviewer_agent
 from grape_coder.agents.review.score_evaluator import create_score_evaluator_agent
 from grape_coder.agents.review.review_task_generator import create_task_generator_agent
-from grape_coder.tools.tool_limit_tracker import reset_agent_count
+from grape_coder.tools.tool_limit_tracker import reset_all_counts
 
 
 def needs_revision(state) -> bool:
@@ -46,13 +46,13 @@ def all_review_agents_complete(required_nodes: list[str]):
 
 
 class ToolResetNode(MultiAgentBase):
-    """A node that resets the tool counter for the reviewer agent on each loop."""
+    """A node that resets all tool counters when looping back in the review graph."""
 
     def __init__(self):
         super().__init__()
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
-        reset_agent_count(AgentIdentifier.REVIEW)
+        reset_all_counts()
 
         agent_result = AgentResult(
             stop_reason="end_turn",
@@ -60,7 +60,9 @@ class ToolResetNode(MultiAgentBase):
             metrics=EventLoopMetrics(),
             message=Message(
                 role="assistant",
-                content=[ContentBlock(text="Tool counter reset for reviewer loop")],
+                content=[
+                    ContentBlock(text="All tool counters reset for reviewer loop")
+                ],
             ),
         )
 
@@ -89,7 +91,6 @@ def build_review_graph(work_path: str):
     builder.add_node(task_generator_agent, "task_generator_agent")
     builder.add_node(code_revision_agent, AgentIdentifier.CODE_REVISION)
 
-    builder.add_edge("tool_reset", "reviewer_agent")
     builder.add_edge("reviewer_agent", "score_evaluator_agent")
     builder.add_edge("reviewer_agent", "task_generator_agent")
 
@@ -107,8 +108,14 @@ def build_review_graph(work_path: str):
         "tool_reset",
         condition=needs_revision,
     )
+    
+    builder.add_edge(
+        "tool_reset",
+        "reviewer_agent",
+        condition=needs_revision,
+    )
 
-    builder.set_entry_point("tool_reset")
+    builder.set_entry_point("reviewer_agent")
     builder.set_execution_timeout(7200)
     builder.set_max_node_executions(10)
     builder.reset_on_revisit(True)
