@@ -70,6 +70,7 @@ def extract_review_tasks_from_xml(full_xml_content: str) -> tuple[str, List[dict
             for task_elem in tasks_elem.findall("task"):
                 files_elem = task_elem.find("files")
                 desc_elem = task_elem.find("description")
+                priority_elem = task_elem.find("priority")
 
                 files = (
                     files_elem.text.strip()
@@ -81,9 +82,20 @@ def extract_review_tasks_from_xml(full_xml_content: str) -> tuple[str, List[dict
                     if desc_elem is not None and desc_elem.text
                     else ""
                 )
+                priority = (
+                    priority_elem.text.strip()
+                    if priority_elem is not None and priority_elem.text
+                    else "MEDIUM"
+                )
 
                 if description:
-                    tasks.append({"files": files, "description": description})
+                    tasks.append(
+                        {
+                            "files": files,
+                            "description": description,
+                            "priority": priority,
+                        }
+                    )
 
         return summary, tasks
 

@@ -26,12 +26,23 @@ def display_tasks_markdown(xml_content: str) -> None:
     if not tasks:
         return
 
+    priority_colors = {
+        "CRITICAL": "red",
+        "HIGH": "orange1",
+        "MEDIUM": "yellow",
+        "LOW": "green",
+    }
+
     md_content = f"## Review Summary\n{summary}\n\n## Tasks ({len(tasks)})\n"
 
     for i, task in enumerate(tasks, 1):
         files = task.get("files", "N/A")
         description = task.get("description", "")
-        md_content += f"### {i}. {files}\n{description}\n\n"
+        priority = task.get("priority", "MEDIUM")
+        color = priority_colors.get(priority.upper(), "white")
+        md_content += (
+            f"### {i}. [{priority.upper()}]({color}) {files}\n{description}\n\n"
+        )
 
     md = Markdown(md_content)
 
@@ -53,28 +64,45 @@ def create_task_generator_agent() -> MultiAgentBase:
 
     system_prompt = """You are a Task Generation Specialist. You receive natural language code reviews and convert them into structured, actionable tasks for the code revision agent.
 
-Your role is to parse the review and create specific, actionable tasks organized by priority.
+Your role is to parse the review and create specific, actionable tasks organized by priority. You must also provide a COMPLETE summary that gives the code revisor a comprehensive understanding of the work context.
+
+SUMMARY REQUIREMENTS:
+The summary must be thorough and include:
+1. Overall project type and purpose (what kind of website/application is this?)
+2. The overall state of the codebase - what's working, what's broken
+3. Main weaknesses that need addressing
+4. Any design decisions or technical approaches that were taken
+5. Specific areas that need the most attention
 
 TASK GENERATION RULES:
 - List the most important fixes first (blocking issues, critical bugs)
 - Specify which files need to be modified
-- Provide a short, clear description of what to fix
+- Provide a clear description of what to fix
 - Be specific about CSS properties, HTML elements, and exact issues
 - Make tasks actionable and specific
+- Include priority levels (CRITICAL, HIGH, MEDIUM, LOW)
+- Group related fixes together when possible
 
 CRITICAL INSTRUCTION:
-Extract specific, actionable tasks from the review. Be precise about file names and exact changes needed.
-Output your tasks in the required XML format :
+Extract specific, actionable tasks from the review. Be precise about file names and exact changes needed. Provide a comprehensive summary.
+
+Output your tasks in the required XML format:
 <review>
     <summary>
-        A brief summary of the overall review and main issues found
+        A comprehensive summary of the review including:
+        - Project type and purpose
+        - Overall state of the codebase
+        - Main weaknesses
+        - Specific areas needing attention
     </summary>
     <tasks>
         <task>
+            <priority>CRITICAL|HIGH|MEDIUM|LOW</priority>
             <files>file1.html, file2.css</files>
             <description>Fix the layout issue where elements overlap on mobile screens</description>
         </task>
         <task>
+            <priority>HIGH</priority>
             <files>styles.css</files>
             <description>Add missing hover states for interactive elements</description>
         </task>
