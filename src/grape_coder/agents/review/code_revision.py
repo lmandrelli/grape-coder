@@ -23,51 +23,59 @@ from grape_coder.tools.work_path import (
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
-def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBase:
-    """Create a code agent with file system tools"""
-
-    # Set work_path for tools
+def create_code_revision_agent(
+    work_path: str, agent_id: AgentIdentifier
+) -> MultiAgentBase:
+    """Create a code revision agent that fixes code based on review feedback."""
     set_work_path(work_path)
 
-    # Get model using the config manager
     config_manager = get_config_manager()
     model = cast(Model, config_manager.get_model(agent_id))
 
-    # Create agent with file system tools
-    system_prompt = f"""You are a code assistant specialized in web development, working as part of a multi-agent system for generating websites.
+    system_prompt = """You are a Code Revision Specialist working in a multi-agent web development system.
 
-    CONTEXT:
-    You are working in a multi-agent pipeline designed to generate complete websites. Other specialized agents have already prepared the groundwork:
-    - CSS/styling agents have created style files (.css) for components
-    - Content agents have generated markdown files (.md) with pages content
-    - Graphics agents have created SVG files (.svg) with icons, logos, and illustrations
+CONTEXT:
+A code reviewer has analyzed the website code and provided feedback containing:
+1. A REVIEW SUMMARY - brief overview of main issues
+2. TASKS TO FIX organized by priority with specific issues to address
 
-    WORKFLOW:
-    You will receive a list of specific tasks to accomplish from an {AgentIdentifier.ORCHESTRATOR}.
-    Your role is to:
-    1. First, explore the working directory to understand what has been prepared by previous agents
-    2. Read and understand the generated files (CSS, text content, SVG graphics, etc.)
-    3. Use these prepared resources to complete the tasks you've been assigned
-    4. Integrate all resources into cohesive, production-ready web code
-    5. Create the final website deliverables (HTML, JavaScript, etc.) that properly reference and use the prepared assets including SVG graphics
+Your role is to address each issue raised in the review and improve the code quality.
 
-    KEY POINT: The files created by other agents are YOUR RESOURCES to complete your assigned tasks.
-    Read them, understand them, and incorporate them into your web development work to fulfill the task list.
-    Maybe some files are incomplete, create new one or rewrite them to add missing logic. Especially style files may need additional classes to style the page correctly.
-    Your goal is to produce a functional, well-structured website that integrates all the prepared components.
+YOUR TASK:
+You will receive a review summary and a task list.
+Your responsibilities are:
+1. First, read the review summary to understand the overall assessment
+2. Then, follow the task list to address each issue in order
+3. First tasks are the most important - fix them first
+4. Review the affected files to understand the current implementation
+5. Make the necessary corrections to address each task
+6. Ensure your fixes don't break other functionality
+7. Re-test the changes by reading the modified files
 
-    Available tools:
-    - list_files: List files and directories in a path (automatically called at startup)
-    - read_file: Read contents of one or more files
-    - edit_file: Rewrite or create a file with new content
-    - grep_files: Search for patterns in files
-    - glob_files: Find files using glob patterns
-    - fetch_url: Fetch content from a URL
+WORKFLOW:
+1. Read the review summary first for context
+2. Follow the task list to fix issues in order (first tasks = highest priority)
+3. For each task mentioned:
+    a. Find and read the relevant files
+    b. Understand what needs to be changed
+    c. Make the necessary edits
+    d. Verify the changes address the issue
 
-    The workspace exploration will be automatically provided to you at the start.
-    """
+GOAL:
+Fix all issues in the task list to improve the code quality.
 
-    return WorkspaceExplorerNode(
+Available tools:
+- list_files: List files and directories in a path (automatically called at startup)
+- read_file: Read contents of one or more files
+- edit_file: Rewrite or create a file with new content
+- grep_files: Search for patterns in files
+- glob_files: Find files using glob patterns
+- fetch_url: Fetch content from a URL
+- search: Search the web for information
+
+The workspace exploration will be automatically provided to you at the start."""
+
+    return CodeRevisionNode(
         model=model,
         system_prompt=system_prompt,
         work_path=work_path,
@@ -92,7 +100,6 @@ def create_code_agent(work_path: str, agent_id: AgentIdentifier) -> MultiAgentBa
 @tool
 def edit_file_code(path: str, content: str) -> str:
     """Edit or create a web file. Only .html, .js, .css, .svg, .json and .md files are allowed."""
-    # Validate that the file has an allowed extension
     allowed_extensions = (".html", ".js", ".css", ".svg", ".json", ".md")
     if not path.endswith(allowed_extensions):
         return f"ERROR: You are only allowed to create and edit web files with extensions: .html, .js, .css, .svg, .json, .md. The path '{path}' does not have an allowed extension."
@@ -100,8 +107,8 @@ def edit_file_code(path: str, content: str) -> str:
     return edit_file(path, content)
 
 
-class WorkspaceExplorerNode(MultiAgentBase):
-    """Custom node that automatically explores the workspace before processing tasks"""
+class CodeRevisionNode(MultiAgentBase):
+    """Custom node that handles code revision with workspace exploration."""
 
     def __init__(
         self,
@@ -131,24 +138,47 @@ class WorkspaceExplorerNode(MultiAgentBase):
         )
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
-        """Execute workspace exploration before main task"""
+        """Execute workspace exploration before processing revision tasks"""
         try:
+            # Remove input propagation
+            task = task[1:]
+
+            task_str = task if isinstance(task, str) else str(task)
+
+            if len(task) == 0:
+                agent_result = AgentResult(
+                    stop_reason="end_turn",
+                    state=Status.COMPLETED,
+                    metrics=EventLoopMetrics(),
+                    message=Message(
+                        role="assistant",
+                        content=[ContentBlock(text="No tasks remaining to process.")],
+                    ),
+                )
+
+                return MultiAgentResult(
+                    status=Status.COMPLETED,
+                    results={
+                        "code_revision": NodeResult(
+                            result=agent_result, status=Status.COMPLETED
+                        )
+                    },
+                )
+
             agent = self._create_agent()
 
-            # First, explore the workspace
             exploration_result = list_files(path=self.work_path, recursive=True)
 
-            # Build enhanced prompt with workspace context
             workspace_context = f"""WORKSPACE EXPLORATION RESULTS:
 {exploration_result}
 
-Now proceed with your task:
-{task}"""
+REVISION TASKS TO COMPLETE:
+{task_str}
 
-            # Execute the main task with workspace context
+Please fix all the issues mentioned in the revision tasks. Focus on the most important issues first."""
+
             response = await agent.invoke_async(workspace_context)
 
-            # Return successful result
             agent_result = AgentResult(
                 stop_reason="end_turn",
                 state=Status.COMPLETED,
@@ -163,7 +193,7 @@ Now proceed with your task:
             return MultiAgentResult(
                 status=Status.COMPLETED,
                 results={
-                    "workspace_explorer": NodeResult(
+                    "code_revision": NodeResult(
                         result=agent_result, status=Status.COMPLETED
                     )
                 },
@@ -183,7 +213,7 @@ Now proceed with your task:
             return MultiAgentResult(
                 status=Status.FAILED,
                 results={
-                    "workspace_explorer": NodeResult(
+                    "code_revision": NodeResult(
                         result=agent_result, status=Status.FAILED
                     )
                 },

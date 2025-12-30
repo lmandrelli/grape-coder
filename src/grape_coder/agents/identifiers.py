@@ -22,16 +22,17 @@ class AgentIdentifier(str, Enum):
 
     # Composer agents
     ORCHESTRATOR = "orchestrator"
-
     GENERATE_CLASS = "class_generator"
     GENERATE_JS = "js_generator"
     TEXT = "text_generator"
     SVG = "svg_generator"
-
-    REVIEW = "review_agent"
-
-    # Code agent
     CODE = "code_agent"
+
+    # Review agents
+    REVIEW = "review_agent"
+    SCORE_EVALUATOR = "score_evaluator_agent"
+    REVIEW_TASK_GENERATOR = "review_task_generator"
+    CODE_REVISION = "code_revision_agent"
 
     # Mono-agent
     MONO_AGENT = "mono_agent"
@@ -53,8 +54,11 @@ AGENT_DESCRIPTIONS: Dict[AgentIdentifier, str] = {
     AgentIdentifier.SVG: "SVG generation agent",
     AgentIdentifier.GENERATE_JS: "JavaScript generation agent",
     AgentIdentifier.CODE: "Interactive code agent with file system tools",
+    AgentIdentifier.CODE_REVISION: "Code revision agent for fixing review feedback",
     AgentIdentifier.MONO_AGENT: "A standalone coding agent for general programming tasks",
     AgentIdentifier.REVIEW: "Code review and quality assurance agent",
+    AgentIdentifier.SCORE_EVALUATOR: "Score evaluator agent for code quality assessment",
+    AgentIdentifier.REVIEW_TASK_GENERATOR: "Task generator agent for converting reviews to actionable tasks",
 }
 
 
@@ -87,16 +91,19 @@ AGENT_TOOL_LIMITS: Dict[AgentIdentifier, int] = {
     AgentIdentifier.ARCHITECT: 30,
     AgentIdentifier.DESIGNER: 30,
     AgentIdentifier.CONTENT_PLANNER: 30,
-    AgentIdentifier.RESEARCHER: 30,
+    AgentIdentifier.RESEARCHER: 50,
     AgentIdentifier.TODO: 30,
     AgentIdentifier.ORCHESTRATOR: 30,
-    AgentIdentifier.GENERATE_CLASS: 30,
-    AgentIdentifier.GENERATE_JS: 30,
-    AgentIdentifier.TEXT: 30,
-    AgentIdentifier.SVG: 30,
-    AgentIdentifier.CODE: 50,
+    AgentIdentifier.GENERATE_CLASS: 50,
+    AgentIdentifier.GENERATE_JS: 50,
+    AgentIdentifier.TEXT: 50,
+    AgentIdentifier.SVG: 50,
+    AgentIdentifier.CODE: 75,
+    AgentIdentifier.CODE_REVISION: 75,
     AgentIdentifier.MONO_AGENT: 150,
     AgentIdentifier.REVIEW: 50,
+    AgentIdentifier.SCORE_EVALUATOR: 30,
+    AgentIdentifier.REVIEW_TASK_GENERATOR: 30,
 }
 
 

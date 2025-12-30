@@ -66,8 +66,9 @@ The project is structured as follows:
 
 - `src/grape_coder/`: Main package source code.
   - `agents/`: Contains agent definitions (code, mono_agent, todo, etc.).
-    - `composer/`: Logic for the composer graph (orchestrator, reviewers, generators).
+    - `composer/`: Logic for the composer graph (orchestrator, generators).
     - `planner/`: Planner swarm agents (architect, designer, researcher, content planner).
+    - `review/`: Review graph agents for quality assurance (reviewer, quality evaluator, task generator, code revision).
   - `config/`: Configuration management (CLI, models, providers).
   - `display/`: UI and display utilities.
   - `nodes/`: Task filtering nodes.
@@ -93,10 +94,15 @@ Grape Coder employs a variety of specialized agents, each with a specific role i
 - **SVG Agent**: Creates vector graphics and icons.
 - **Text Generator**: Writes the textual content for the web pages.
 - **Code Agent**: Assembles the final HTML structure and integrates all components.
-- **Review Agent**: Validates the generated code and suggests improvements.
+
+#### Review Graph
+- **Reviewer Agent**: Provides detailed natural language feedback on code quality, visual aesthetics, UX, and best practices.
+- **Score Evaluator Agent**: Assesses code quality and assigns numerical scores (0-20) across five categories: code validity, integration, responsiveness, best practices, and accessibility.
+- **Review Task Generator Agent**: Converts natural language reviews into structured, actionable XML tasks organized by priority.
+- **Code Revision Agent**: Implements fixes based on review feedback, addressing each task systematically to improve code quality.
 
 ### Graph
-The graph below illustrates the multi-agent architecture of Grape Coder, highlighting two of its core components: the Planner Swarm, which handles project planning, and the Composer Graph, which orchestrates code generation based on the planned tasks.
+The graph below illustrates the multi-agent architecture of Grape Coder, highlighting three of its core components: the Planner Swarm for project planning, the Composer Graph for code generation, and the Review Graph for quality assurance with iterative revision.
 
 ```mermaid
 graph TD
@@ -113,7 +119,7 @@ graph TD
 
     %% --- MAIN GRAPH ---
     User[User Input]:::userInput --> PlannerSwarm
-    PlannerSwarm --> TodoGenerator[Todo Generator]:::orchestrator 
+    PlannerSwarm --> TodoGenerator[Todo Generator]:::orchestrator
     TodoGenerator --> Orchestrator
 
     subgraph PlannerSwarm["Planner Swarm"]
@@ -140,9 +146,6 @@ graph TD
         SVGAgent[SVG Agent]
         TextAgent[Text Generator Agent]
         CodeAgent[Code Agent]
-        ReviewAgent[Review Agent]
-        QualityCheck{Quality Check}
-        FinalOutput((Final Output))
 
         %% Links
         Orchestrator --> ClassFilter & JSFilter & SVGFilter & TextFilter & CodeFilter
@@ -152,19 +155,33 @@ graph TD
         TextFilter --> TextAgent
 
         ClassAgent & JSAgent & CodeFilter & SVGAgent & TextAgent -.->|wait for all| CodeAgent
-
-        %% Review loop
-        CodeAgent --> ReviewAgent
-        ReviewAgent --> QualityCheck
-        QualityCheck -- "❌ Needs Revision" --> CodeAgent
-        QualityCheck -- "✅ Approved" --> FinalOutput
     end
+
+    CodeAgent ---> Reviewer
+
+    subgraph ReviewGraph["Review Graph"]
+        direction TB
+        ToolReset[Tool Limit Reset]
+        Reviewer[Reviewer Agent]
+        ScoreEvaluator[Score Evaluator Agent]
+        TaskGenerator[Review Task Generator Agent]
+        CodeRevision[Code Revision Agent]
+
+        ToolReset --> Reviewer
+        Reviewer --> ScoreEvaluator
+        Reviewer --> TaskGenerator
+        ScoreEvaluator -.->|❌ needs revision| CodeRevision
+        TaskGenerator -- tasks --> CodeRevision
+        CodeRevision --> ToolReset
+    end
+
+    ScoreEvaluator -- "✅ Approved" ----> FinalOutput((Final Output))
 
     %% --- APPLY CLASSES ---
     class Researcher,Architect,Designer,ContentPlanner planner;
-    class ClassFilter,JSFilter,SVGFilter,TextFilter,CodeFilter filter;
+    class ClassFilter,JSFilter,SVGFilter,TextFilter,CodeFilter,ToolReset filter;
     class ClassAgent,JSAgent,SVGAgent,TextAgent,CodeAgent generator;
-    class ReviewAgent reviewer;
+    class Reviewer,ScoreEvaluator,TaskGenerator,CodeRevision reviewer;
     class QualityCheck decision;
     class FinalOutput endNode;
 
@@ -179,9 +196,11 @@ graph TD
         L2[Filter]:::filter
         L3[Generator]:::generator
         L5[Orchestration]:::orchestrator
+        L6[Review]:::reviewer
 
         L1 ~~~ L2
         L3 ~~~ L5
+        L5 ~~~ L6
     end
 
     %% Invisible links to enforce centered layout
