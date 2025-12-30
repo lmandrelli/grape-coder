@@ -7,7 +7,10 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from grape_coder.nodes.XML_validator_node import XMLValidatorNode, XMLValidationError
-from grape_coder.agents.utils import extract_review_tasks_from_xml
+from grape_coder.agents.utils import (
+    extract_review_tasks_from_xml,
+    extract_xml_by_tags,
+)
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
@@ -128,32 +131,7 @@ Output your tasks in the required XML format:
 
 
 def extract_tasks_xml(content: str) -> str:
-    """Extract XML content from task generator response.
-
-    Searches for <review> tags in the content.
-
-    Args:
-        content: Raw agent response content.
-
-    Returns:
-        Extracted XML string.
-    """
-    import re
-
-    review_pattern = r"<review>.*?</review>"
-
-    review_match = re.search(review_pattern, content, re.DOTALL)
-
-    if review_match:
-        return review_match.group(0)
-
-    xml_pattern = r"<[^>]+>.*?</[^>]+>"
-    xml_match = re.search(xml_pattern, content, re.DOTALL)
-
-    if xml_match:
-        return xml_match.group(0)
-
-    return content
+    return extract_xml_by_tags(content, "review")
 
 
 def validate_tasks(xml_content: str) -> str:

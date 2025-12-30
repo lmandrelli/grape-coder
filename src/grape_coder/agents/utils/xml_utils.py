@@ -1,5 +1,6 @@
+import re
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 class XMLValidationError(Exception):
@@ -154,3 +155,77 @@ def needs_revision_from_scores(scores: dict) -> bool:
         return True
 
     return False
+
+
+def extract_xml_by_tags(
+    content: str, tags: Union[str, List[str]], join_with: str = "\n"
+) -> str:
+    """Extract XML content from raw LLM response by searching for specific tags.
+
+    Searches for specific XML tags in the content and returns the extracted sections.
+    Falls back to a generic XML pattern if specific tags are not found.
+
+    Args:
+        content: Raw agent response content.
+        tags: Single tag name (str) or list of tag names to search for.
+        join_with: String to join multiple extracted sections. Defaults to newline.
+
+    Returns:
+        Extracted XML string(s), joined if multiple tags specified.
+        Returns original content if no XML found.
+    """
+    if isinstance(tags, str):
+        tags = [tags]
+
+    matches = []
+    for tag in tags:
+        pattern = rf"<{tag}>.*?</{tag}>"
+        match = re.search(pattern, content, re.DOTALL)
+        if match:
+            matches.append(match.group(0))
+
+    if matches:
+        return join_with.join(matches)
+
+    xml_pattern = r"<[^>]+>.*?</[^>]+>"
+    xml_match = re.search(xml_pattern, content, re.DOTALL)
+
+    if xml_match:
+        return xml_match.group(0)
+
+    return content
+
+
+def extract_xml_section(content: str, tag_name: str) -> tuple[str, str]:
+    """Extract and validate an XML section with the specified root tag.
+
+    Extracts a section from content bounded by the specified tag, validates
+    that the extracted XML has the correct root tag, and returns both the
+    section and the root tag for further processing.
+
+    Args:
+        content: Content containing the XML section.
+        tag_name: Name of the tag to extract.
+
+    Returns:
+        Tuple of (extracted_xml_section, root_tag_name).
+
+    Raises:
+        ET.ParseError: If XML parsing fails.
+    """
+    start = content.find(f"<{tag_name}>")
+    end = content.find(f"</{tag_name}>") + len(f"</{tag_name}>")
+
+    if start != -1 and end > start:
+        section = content[start:end]
+        root = ET.fromstring(section)
+        if root.tag != tag_name:
+            raise ET.ParseError(
+                f"Root element must be '{tag_name}', found '{root.tag}'"
+            )
+        return section, tag_name
+
+    root = ET.fromstring(content)
+    if root.tag != tag_name:
+        raise ET.ParseError(f"Root element must be '{tag_name}', found '{root.tag}'")
+    return content, tag_name

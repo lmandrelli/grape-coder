@@ -2,6 +2,7 @@ from strands import Agent
 from strands.multiagent.base import MultiAgentBase
 
 from grape_coder.nodes.XML_validator_node import XMLValidatorNode, XMLValidationError
+from grape_coder.agents.utils import extract_xml_by_tags
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
@@ -174,37 +175,7 @@ def create_orchestrator_agent() -> MultiAgentBase:
 
 
 def orchestrator_xml_extractor(content: str) -> str:
-    """Extract XML content from orchestrator agent response.
-
-    Searches for <context> and <task_distribution> tags in the content.
-    Falls back to any XML-like tags if specific patterns are not found.
-
-    Args:
-        content: Raw agent response content.
-
-    Returns:
-        Extracted XML string.
-    """
-    import re
-
-    context_pattern = r"<context>.*?</context>"
-    task_pattern = r"<task_distribution>.*?</task_distribution>"
-
-    context_match = re.search(context_pattern, content, re.DOTALL)
-    task_match = re.search(task_pattern, content, re.DOTALL)
-
-    if context_match and task_match:
-        return context_match.group(0) + "\n" + task_match.group(0)
-    elif task_match:
-        return task_match.group(0)
-
-    xml_pattern = r"<[^>]+>.*?</[^>]+>"
-    xml_match = re.search(xml_pattern, content, re.DOTALL)
-
-    if xml_match:
-        return xml_match.group(0)
-
-    return content
+    return extract_xml_by_tags(content, ["context", "task_distribution"])
 
 
 def validate_distribution(xml_distribution: str) -> str:

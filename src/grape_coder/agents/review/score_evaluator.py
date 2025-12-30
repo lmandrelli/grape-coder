@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 
 from grape_coder.nodes.XML_validator_node import XMLValidatorNode, XMLValidationError
-from grape_coder.agents.utils import extract_scores_from_xml
+from grape_coder.agents.utils import extract_scores_from_xml, extract_xml_by_tags
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
@@ -171,32 +171,7 @@ def display_scores_callback(xml_content: str) -> None:
 
 
 def extract_scores_xml(content: str) -> str:
-    """Extract XML content from score evaluator response.
-
-    Searches for <review_scores> tags in the content.
-
-    Args:
-        content: Raw agent response content.
-
-    Returns:
-        Extracted XML string.
-    """
-    import re
-
-    scores_pattern = r"<review_scores>.*?</review_scores>"
-
-    scores_match = re.search(scores_pattern, content, re.DOTALL)
-
-    if scores_match:
-        return scores_match.group(0)
-
-    xml_pattern = r"<[^>]+>.*?</[^>]+>"
-    xml_match = re.search(xml_pattern, content, re.DOTALL)
-
-    if xml_match:
-        return xml_match.group(0)
-
-    return content
+    return extract_xml_by_tags(content, "review_scores")
 
 
 def validate_scores(xml_content: str) -> str:
