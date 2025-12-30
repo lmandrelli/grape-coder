@@ -6,11 +6,8 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from grape_coder.agents.common import (
-    XMLValidatorNode,
-    XMLValidationError,
-    extract_review_tasks_from_xml,
-)
+from grape_coder.nodes.XML_validator_node import XMLValidatorNode, XMLValidationError
+from grape_coder.agents.common import extract_review_tasks_from_xml
 from grape_coder.agents.identifiers import AgentIdentifier, get_agent_description
 from grape_coder.config import get_config_manager
 from grape_coder.display import get_conversation_tracker, get_tool_tracker
