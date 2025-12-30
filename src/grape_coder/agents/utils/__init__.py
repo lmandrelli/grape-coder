@@ -1,4 +1,4 @@
-from grape_coder.agents.common.xml_utils import (
+from grape_coder.agents.utils.xml_utils import (
     extract_context_from_xml,
     extract_tasks_from_xml,
     extract_review_tasks_from_xml,

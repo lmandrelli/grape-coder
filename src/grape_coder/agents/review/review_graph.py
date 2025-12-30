@@ -7,7 +7,7 @@ from strands.multiagent.base import MultiAgentBase, MultiAgentResult, NodeResult
 from strands.telemetry.metrics import EventLoopMetrics
 from strands.types.content import ContentBlock, Message
 
-from grape_coder.agents.common import (
+from grape_coder.agents.utils import (
     extract_scores_from_xml,
     needs_revision_from_scores,
 )
