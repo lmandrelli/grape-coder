@@ -111,5 +111,6 @@ def build_review_graph(work_path: str):
     builder.set_entry_point("tool_reset")
     builder.set_execution_timeout(7200)
     builder.set_max_node_executions(10)
+    builder.reset_on_revisit(True)
 
     return builder.build()
