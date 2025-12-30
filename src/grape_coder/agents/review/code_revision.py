@@ -140,6 +140,31 @@ class CodeRevisionNode(MultiAgentBase):
     async def invoke_async(self, task, invocation_state=None, **kwargs):
         """Execute workspace exploration before processing revision tasks"""
         try:
+            # Remove input propagation
+            task = task[1:]
+
+            task_str = task if isinstance(task, str) else str(task)
+
+            if len(task) == 0:
+                agent_result = AgentResult(
+                    stop_reason="end_turn",
+                    state=Status.COMPLETED,
+                    metrics=EventLoopMetrics(),
+                    message=Message(
+                        role="assistant",
+                        content=[ContentBlock(text="No tasks remaining to process.")],
+                    ),
+                )
+
+                return MultiAgentResult(
+                    status=Status.COMPLETED,
+                    results={
+                        "code_revision": NodeResult(
+                            result=agent_result, status=Status.COMPLETED
+                        )
+                    },
+                )
+
             agent = self._create_agent()
 
             exploration_result = list_files(path=self.work_path, recursive=True)
@@ -148,7 +173,7 @@ class CodeRevisionNode(MultiAgentBase):
 {exploration_result}
 
 REVISION TASKS TO COMPLETE:
-{task}
+{task_str}
 
 Please fix all the issues mentioned in the revision tasks. Focus on the most important issues first."""
 
