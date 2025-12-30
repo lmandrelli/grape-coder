@@ -21,7 +21,7 @@ from grape_coder.tools.tool_limit_tracker import reset_all_counts
 
 def needs_revision(state) -> bool:
     """Check if revision is needed based on score evaluator results."""
-    score_result = state.results.get("score_evaluator_agent")
+    score_result = state.results.get(AgentIdentifier.SCORE_EVALUATOR)
     if score_result is None:
         return False
 
@@ -86,19 +86,22 @@ def build_review_graph(work_path: str):
     builder = GraphBuilder()
 
     builder.add_node(tool_reset_node, "tool_reset")
-    builder.add_node(reviewer_agent, "reviewer_agent")
-    builder.add_node(score_evaluator_agent, "score_evaluator_agent")
-    builder.add_node(task_generator_agent, "task_generator_agent")
+    builder.add_node(reviewer_agent, AgentIdentifier.REVIEW)
+    builder.add_node(score_evaluator_agent, AgentIdentifier.SCORE_EVALUATOR)
+    builder.add_node(task_generator_agent, AgentIdentifier.REVIEW_TASK_GENERATOR)
     builder.add_node(code_revision_agent, AgentIdentifier.CODE_REVISION)
 
-    builder.add_edge("reviewer_agent", "score_evaluator_agent")
-    builder.add_edge("reviewer_agent", "task_generator_agent")
+    builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.SCORE_EVALUATOR)
+    builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.REVIEW_TASK_GENERATOR)
 
-    parallel_review_agents = ["score_evaluator_agent", "task_generator_agent"]
+    parallel_review_agents = [
+        AgentIdentifier.SCORE_EVALUATOR,
+        AgentIdentifier.REVIEW_TASK_GENERATOR,
+    ]
     evaluation_done = all_review_agents_complete(parallel_review_agents)
 
     builder.add_edge(
-        "task_generator_agent",
+        AgentIdentifier.REVIEW_TASK_GENERATOR,
         AgentIdentifier.CODE_REVISION,
         condition=evaluation_done and needs_revision,
     )
@@ -108,14 +111,14 @@ def build_review_graph(work_path: str):
         "tool_reset",
         condition=needs_revision,
     )
-    
+
     builder.add_edge(
         "tool_reset",
-        "reviewer_agent",
+        AgentIdentifier.REVIEW,
         condition=needs_revision,
     )
 
-    builder.set_entry_point("reviewer_agent")
+    builder.set_entry_point(AgentIdentifier.REVIEW)
     builder.set_execution_timeout(7200)
     builder.set_max_node_executions(10)
     builder.reset_on_revisit(True)
