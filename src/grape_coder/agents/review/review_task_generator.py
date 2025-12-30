@@ -7,7 +7,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from grape_coder.nodes.XML_validator_node import XMLValidatorNode, XMLValidationError
-from grape_coder.agents.utils import (
+from grape_coder.agents.review.review_xml_utils import (
     extract_review_tasks_from_xml,
     extract_xml_by_tags,
 )
