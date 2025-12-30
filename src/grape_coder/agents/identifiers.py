@@ -22,18 +22,16 @@ class AgentIdentifier(str, Enum):
 
     # Composer agents
     ORCHESTRATOR = "orchestrator"
-
     GENERATE_CLASS = "class_generator"
     GENERATE_JS = "js_generator"
     TEXT = "text_generator"
     SVG = "svg_generator"
+    CODE = "code_agent"
 
+    # Review agents
     REVIEW = "review_agent"
     SCORE_EVALUATOR = "score_evaluator_agent"
     REVIEW_TASK_GENERATOR = "review_task_generator"
-
-    # Code agent
-    CODE = "code_agent"
     CODE_REVISION = "code_revision_agent"
 
     # Mono-agent
