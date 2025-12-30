@@ -6,48 +6,6 @@ from typing import List, Optional, Union
 class XMLValidationError(Exception):
     pass
 
-
-def extract_context_from_xml(full_xml_content: str) -> str:
-    """Extracts the global context from the XML content."""
-    try:
-        start = full_xml_content.find("<context>")
-        end = full_xml_content.find("</context>")
-        if start != -1 and end != -1:
-            context_content = full_xml_content[start + len("<context>") : end]
-            return context_content.strip()
-    except Exception:
-        pass
-    return ""
-
-
-def extract_tasks_from_xml(full_xml_content: str, agent_xml_tag: str) -> List[str]:
-    """Parses XML and returns a list of tasks for a specific agent tag."""
-    try:
-        start = full_xml_content.find("<task_distribution>")
-        end = full_xml_content.rfind("</task_distribution>")
-        if start != -1 and end != -1:
-            full_xml_content = full_xml_content[
-                start : end + len("</task_distribution>")
-            ]
-
-        root = ET.fromstring(full_xml_content)
-
-        agent_section = root.find(agent_xml_tag)
-
-        if agent_section is None:
-            return []
-
-        tasks = []
-        for task in agent_section.findall("task"):
-            if task.text and task.text.strip():
-                tasks.append(task.text.strip())
-
-        return tasks
-
-    except ET.ParseError:
-        return []
-
-
 def extract_review_tasks_from_xml(full_xml_content: str) -> tuple[str, List[dict]]:
     """Extracts summary and tasks from review XML content."""
     try:
