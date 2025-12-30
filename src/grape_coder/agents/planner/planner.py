@@ -20,7 +20,7 @@ def build_planner(work_path: str):
         max_handoffs=10,
         max_iterations=10,
         execution_timeout=3600,  # 1h
-        node_timeout=900,  # 15 minutes per agent
+        node_timeout=1800,  # 30 minutes per agent
         repetitive_handoff_detection_window=3,
         repetitive_handoff_min_unique_agents=2,
     )

@@ -118,7 +118,7 @@ def build_composer(work_path: str):
     builder.set_entry_point(AgentIdentifier.ORCHESTRATOR)
 
     # Configure execution limits for the loop
-    builder.set_execution_timeout(7200)  # 2 hours max
+    builder.set_execution_timeout(3600)  # 1 hour max
 
     # Build and return the graph
     return builder.build()
