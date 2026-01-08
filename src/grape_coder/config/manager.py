@@ -6,7 +6,7 @@ from typing import Any, Optional
 import platformdirs
 
 from .litellm_integration import create_litellm_model
-from .models import GrapeCoderConfig, ProviderConfig, AgentConfig
+from .models import GrapeCoderConfig, ProviderConfig, AgentConfig, WorkflowConfig
 from ..agents.identifiers import get_agent_values
 
 # Global config manager instance
@@ -111,8 +111,15 @@ class ConfigManager:
                         dropped_items["malformed_agents"].append(agent_name)
                         continue
 
+            valid_workflow = None
+            if "workflow" in config_data:
+                try:
+                    valid_workflow = WorkflowConfig(**config_data["workflow"])
+                except Exception:
+                    pass
+
             return GrapeCoderConfig(
-                providers=valid_providers, agents=valid_agents
+                providers=valid_providers, agents=valid_agents, workflow=valid_workflow
             ), dropped_items
 
         except Exception:

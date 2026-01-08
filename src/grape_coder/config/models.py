@@ -38,6 +38,23 @@ class AgentConfig(BaseModel):
     model_name: str = Field(..., description="Model identifier for LiteLLM")
 
 
+class WorkflowStep(str, Enum):
+    """Workflow steps that can be enabled or disabled."""
+
+    PLAN = "plan"
+    CODE = "code"
+    REVIEW = "review"
+
+
+class WorkflowConfig(BaseModel):
+    """Configuration for workflow step execution."""
+
+    steps_enabled: Dict[WorkflowStep, bool] = Field(
+        default_factory=lambda: {step: True for step in WorkflowStep},
+        description="Dict of workflow steps and their enabled status",
+    )
+
+
 class GrapeCoderConfig(BaseModel):
     """Main configuration model with cross-reference validation."""
 
@@ -46,6 +63,9 @@ class GrapeCoderConfig(BaseModel):
     )
     agents: Dict[str, AgentConfig] = Field(
         default_factory=dict, description="Agent configurations"
+    )
+    workflow: Optional[WorkflowConfig] = Field(
+        default=None, description="Workflow step configuration"
     )
 
     @model_validator(mode="after")
