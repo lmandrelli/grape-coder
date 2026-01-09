@@ -10,6 +10,9 @@ from grape_coder.config.models import (
     AgentConfig,
     GrapeCoderConfig,
     ProviderType,
+    WorkflowConfig,
+    WorkflowStep,
+    LinterConfig,
 )
 from grape_coder.config.manager import get_config_manager, ConfigManager
 from grape_coder.config.litellm_integration import ProviderFactory
@@ -48,11 +51,12 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         console.print("2. Remove a provider")
         console.print("3. Setup models for agents")
         console.print("4. Configure linter commands")
-        console.print("5. Exit")
+        console.print("5. Configure workflow steps")
+        console.print("6. Exit")
 
         choice = prompt(
-            "Select an option (1-5): ",
-            validator=choice_validator(["1", "2", "3", "4", "5"]),
+            "Select an option (1-6): ",
+            validator=choice_validator(["1", "2", "3", "4", "5", "6"]),
         )
 
         if choice == "1":
@@ -64,6 +68,8 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         elif choice == "4":
             configure_linter_commands(config)
         elif choice == "5":
+            configure_workflow_steps(config)
+        elif choice == "6":
             # Save and exit
             try:
                 config_manager.save_config(config)
@@ -340,8 +346,6 @@ def add_provider(config: GrapeCoderConfig) -> None:
 
 def configure_linter_commands(config: GrapeCoderConfig) -> None:
     """Configure the linter commands."""
-    from grape_coder.config.models import LinterConfig
-
     console.print("\n[bold]Configure Linter Commands[/bold]")
 
     current_config = config.linter_commands
@@ -352,9 +356,8 @@ def configure_linter_commands(config: GrapeCoderConfig) -> None:
     console.print(f"3. purgecss: {current_config.purgecss}")
     console.print(f"4. linkinator: {current_config.linkinator}")
 
-    console.print("\nSelect a linter to configure (1-4) or 0 to reset all:")
     choice = prompt(
-        "Select an option (0-4): ",
+        "Select a linter to configure (1-4) or 0 to reset all: ",
         validator=choice_validator(["0", "1", "2", "3", "4"]),
     )
 
@@ -384,3 +387,68 @@ def configure_linter_commands(config: GrapeCoderConfig) -> None:
     console.print(
         f"[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
     )
+
+
+def configure_workflow_steps(config: GrapeCoderConfig) -> None:
+    """Configure which workflow steps are enabled or disabled."""
+    console.print("\n[bold]Configure Workflow Steps[/bold]")
+
+    if config.workflow is None:
+        config.workflow = WorkflowConfig()
+
+    workflow_config: WorkflowConfig = config.workflow
+
+    console.print("\n[bold]Current workflow step status:[/bold]")
+    for step in WorkflowStep:
+        status = (
+            "[green]Enabled[/green]"
+            if workflow_config.steps_enabled[step]
+            else "[red]Disabled[/red]"
+        )
+        console.print(f"  {step.value}: {status}")
+
+    console.print(
+        "\nEnter step names to toggle (comma-separated) or 'all' to toggle all:"
+    )
+    console.print("Options: plan, code, review (or 'q' to quit)")
+
+    choice = prompt("Toggle: ").strip().lower()
+
+    if choice == "q" or choice == "quit":
+        return
+
+    steps_to_toggle = []
+    if choice == "all":
+        steps_to_toggle = list(WorkflowStep)
+    else:
+        step_names = [s.strip() for s in choice.split(",")]
+        for name in step_names:
+            try:
+                steps_to_toggle.append(WorkflowStep(name))
+            except ValueError:
+                console.print(f"[red]Unknown step: {name}[/red]")
+
+    for step in steps_to_toggle:
+        current = workflow_config.steps_enabled[step]
+        workflow_config.steps_enabled[step] = not current
+        console.print(
+            f"  {step.value}: {'Enabled' if workflow_config.steps_enabled[step] else 'Disabled'}"
+        )
+
+    console.print("\n[bold]Updated workflow step status:[/bold]")
+    for step in WorkflowStep:
+        status = (
+            "[green]Enabled[/green]"
+            if workflow_config.steps_enabled[step]
+            else "[red]Disabled[/red]"
+        )
+        console.print(f"  {step.value}: {status}")
+
+    try:
+        config_manager = get_config_manager()
+        config_manager.save_config(config)
+        console.print(
+            f"\n[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
+        )
+    except Exception as e:
+        console.print(f"[red]Error saving configuration: {e}[/red]")
