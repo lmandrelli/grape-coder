@@ -3,6 +3,7 @@ graph TD
     %% --- COLOR PALETTE ---
     classDef planner fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000;
     classDef filter fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef utility fill:#d1c4e9,stroke:#512da8,stroke-width:2px,stroke-dasharray: 3 3;
     classDef generator fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
     classDef orchestrator fill:#263238,stroke:#000,stroke-width:4px,color:#fff;
     classDef userInput fill:#ffccbc,stroke:#d84315,stroke-width:2px;
@@ -51,29 +52,32 @@ graph TD
         ClassAgent & JSAgent & CodeFilter & SVGAgent & TextAgent -.->|wait for all| CodeAgent
     end
 
-    CodeAgent ---> Reviewer
+    CodeAgent --> Linter
 
     subgraph ReviewGraph["Review Graph"]
         direction TB
-        ToolReset[Tool Limit Reset]
+        Linter[Linter Node]
         Reviewer[Reviewer Agent]
         ScoreEvaluator[Score Evaluator Agent]
         TaskGenerator[Review Task Generator Agent]
         CodeRevision[Code Revision Agent]
+        ToolReset[Tool Limit Reset]
 
-        ToolReset --> Reviewer
+        Linter --> Reviewer
         Reviewer --> ScoreEvaluator
         Reviewer --> TaskGenerator
         ScoreEvaluator -.->|❌ needs revision| CodeRevision
         TaskGenerator -- tasks --> CodeRevision
         CodeRevision --> ToolReset
+        ToolReset --> Linter
     end
 
     ScoreEvaluator -- "✅ Approved" ----> FinalOutput((Final Output))
 
     %% --- APPLY CLASSES ---
     class Researcher,Architect,Designer,ContentPlanner planner;
-    class ClassFilter,JSFilter,SVGFilter,TextFilter,CodeFilter,ToolReset filter;
+    class ClassFilter,JSFilter,SVGFilter,TextFilter,CodeFilter filter;
+    class Linter,ToolReset utility;
     class ClassAgent,JSAgent,SVGAgent,TextAgent,CodeAgent generator;
     class Reviewer,ScoreEvaluator,TaskGenerator,CodeRevision reviewer;
     class QualityCheck decision;
@@ -88,11 +92,14 @@ graph TD
         direction LR
         L1[Planner]:::planner
         L2[Filter]:::filter
+        L4[Utility]:::utility
         L3[Generator]:::generator
         L5[Orchestration]:::orchestrator
         L6[Review]:::reviewer
 
         L1 ~~~ L2
+        L2 ~~~ L4
+        L4 ~~~ L3
         L3 ~~~ L5
         L5 ~~~ L6
     end

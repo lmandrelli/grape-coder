@@ -94,14 +94,16 @@ def build_review_graph(work_path: str):
     builder.add_node(code_revision_agent, AgentIdentifier.CODE_REVISION)
     builder.add_node(linter_node, "linter")
 
+    # Linter runs first to provide technical issues to the reviewer
+    builder.add_edge("linter", AgentIdentifier.REVIEW)
+
+    # Both evaluators run in parallel after review is complete
     builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.SCORE_EVALUATOR)
     builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.REVIEW_TASK_GENERATOR)
-    builder.add_edge("linter", AgentIdentifier.SCORE_EVALUATOR)
-    builder.add_edge("linter", AgentIdentifier.REVIEW_TASK_GENERATOR)
 
     parallel_review_agents = [
-        AgentIdentifier.REVIEW.value,
-        "linter",
+        AgentIdentifier.SCORE_EVALUATOR,
+        AgentIdentifier.REVIEW_TASK_GENERATOR,
     ]
     evaluation_done = all_review_agents_complete(parallel_review_agents)
 
@@ -119,11 +121,12 @@ def build_review_graph(work_path: str):
 
     builder.add_edge(
         "tool_reset",
-        AgentIdentifier.REVIEW,
+        "linter",
         condition=needs_revision,
     )
 
-    builder.set_entry_point(AgentIdentifier.REVIEW)
+    # Linter is the entry point for the first iteration
+    builder.set_entry_point("linter")
     builder.set_execution_timeout(5400)  # 1h30 max
     builder.reset_on_revisit(True)
 

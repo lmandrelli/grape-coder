@@ -40,7 +40,8 @@ class LinterNode(MultiAgentBase):
                 cwd=str(self.work_path),
                 timeout=120,
             )
-            return result.returncode == 0, result.stdout + result.stderr
+            output = result.stdout + result.stderr
+            return True, output if output is not None else ""
         except subprocess.TimeoutExpired:
             return False, ""
         except FileNotFoundError:
@@ -98,16 +99,20 @@ class LinterNode(MultiAgentBase):
                 typer.secho(f"{name}: ✗ FAIL", fg=typer.colors.RED)
 
     async def invoke_async(self, task, invocation_state=None, **kwargs):
+        # Linter runs first, so task is the original user task
+        # We run linters and output results for the next node (Reviewer)
         results = self.run_linters()
 
-        any_failed = any(not r["success"] for r in results.values())
+        linter_output = self._format_results(results)
 
-        if any_failed:
-            formatted_output = ""
-        else:
-            formatted_output = self._format_results(results)
-
+        # Print results to console since linter is the entry point
         self.print_results()
+
+        # Format output for the next node (Reviewer)
+        if linter_output:
+            formatted_output = f"\nLinter Results:\n{linter_output}"
+        else:
+            formatted_output = "\nLinter Results:\n  (no output)"
 
         agent_result = AgentResult(
             stop_reason="end_turn",
@@ -128,15 +133,14 @@ class LinterNode(MultiAgentBase):
 
     def _format_results(self, results: dict[str, dict]) -> str:
         """Format linter results for next agent."""
-        if all(not r["success"] for r in results.values()):
-            return ""
-
         output_lines = []
 
         for name, result in results.items():
-            if not result["success"]:
+            if result["success"]:
+                status = "✓ PASS"
+                output_lines.append(f"\n{name}: {status}")
+            else:
                 continue
-            output_lines.append(f"\n{name}:")
             if result["output"]:
                 output_lines.append(result["output"])
 
