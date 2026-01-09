@@ -50,11 +50,12 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         console.print("2. Remove a provider")
         console.print("3. Setup models for agents")
         console.print("4. Configure workflow steps")
-        console.print("5. Exit")
+        console.print("5. Configure linter commands")
+        console.print("6. Exit")
 
         choice = prompt(
-            "Select an option (1-5): ",
-            validator=choice_validator(["1", "2", "3", "4", "5"]),
+            "Select an option (1-6): ",
+            validator=choice_validator(["1", "2", "3", "4", "5", "6"]),
         )
 
         if choice == "1":
@@ -66,6 +67,8 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         elif choice == "4":
             configure_workflow_steps(config)
         elif choice == "5":
+            configure_linter_commands(config)
+        elif choice == "6":
             # Save and exit
             try:
                 config_manager.save_config(config)
@@ -419,3 +422,54 @@ def configure_workflow_steps(config: GrapeCoderConfig) -> None:
         )
     except Exception as e:
         console.print(f"[red]Error saving configuration: {e}[/red]")
+
+
+def configure_linter_commands(config: GrapeCoderConfig) -> None:
+    """Configure the linter commands."""
+    from grape_coder.config.models import LinterConfig
+
+    console.print("\n[bold]Configure Linter Commands[/bold]")
+
+    if not hasattr(config, "linter_commands") or config.linter_commands is None:
+        config.linter_commands = LinterConfig()
+
+    current_config = config.linter_commands
+
+    console.print("\nAvailable linters:")
+    console.print(f"1. oxlint: {current_config.oxlint}")
+    console.print(f"2. markuplint: {current_config.markuplint}")
+    console.print(f"3. purgecss: {current_config.purgecss}")
+    console.print(f"4. linkinator: {current_config.linkinator}")
+
+    console.print("\nSelect a linter to configure (1-4) or 0 to reset all:")
+    choice = prompt(
+        "Select an option (0-4): ",
+        validator=choice_validator(["0", "1", "2", "3", "4"]),
+    )
+
+    if choice == "0":
+        config.linter_commands = LinterConfig()
+        console.print("[green]Linter commands reset to defaults.[/green]")
+    else:
+        linter_fields = ["oxlint", "markuplint", "purgecss", "linkinator"]
+        selected_field = linter_fields[int(choice) - 1]
+        current_value = getattr(current_config, selected_field)
+
+        console.print(f"\nConfiguring {selected_field}")
+        console.print(f"Current command: {current_value}")
+
+        new_command = prompt(f"New command for {selected_field}: ").strip()
+
+        if new_command:
+            setattr(config.linter_commands, selected_field, new_command)
+            console.print(
+                f"[green]{selected_field} command updated successfully.[/green]"
+            )
+        else:
+            console.print(f"[yellow]{selected_field} command unchanged.[/yellow]")
+
+    config_manager = get_config_manager()
+    config_manager.save_config(config)
+    console.print(
+        f"[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
+    )

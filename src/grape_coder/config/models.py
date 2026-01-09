@@ -55,6 +55,27 @@ class WorkflowConfig(BaseModel):
     )
 
 
+class LinterConfig(BaseModel):
+    """Configuration for all linter commands."""
+
+    oxlint: str = Field(
+        default="npx oxlint",
+        description="Command to run oxlint",
+    )
+    markuplint: str = Field(
+        default="npx markuplint **/*.html",
+        description="Command to run markuplint",
+    )
+    purgecss: str = Field(
+        default="npx purgecss --css style/*.css --content **/*.html **/*.js -o style",
+        description="Command to run purgecss",
+    )
+    linkinator: str = Field(
+        default="npx linkinator . --recurse",
+        description="Command to run linkinator",
+    )
+
+
 class GrapeCoderConfig(BaseModel):
     """Main configuration model with cross-reference validation."""
 
@@ -66,6 +87,11 @@ class GrapeCoderConfig(BaseModel):
     )
     workflow: Optional[WorkflowConfig] = Field(
         default=None, description="Workflow step configuration"
+    )
+
+    linter_commands: LinterConfig = Field(
+        default_factory=LinterConfig,
+        description="Commands to run linters (oxlint, markuplint, purgecss, linkinator)",
     )
 
     @model_validator(mode="after")

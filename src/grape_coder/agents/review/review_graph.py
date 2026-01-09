@@ -13,6 +13,7 @@ from grape_coder.agents.review.review_xml_utils import (
 )
 from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.agents.review.code_revision import create_code_revision_agent
+from grape_coder.agents.review.linter_node import LinterNode
 from grape_coder.agents.review.reviewer import create_reviewer_agent
 from grape_coder.agents.review.score_evaluator import create_score_evaluator_agent
 from grape_coder.agents.review.review_task_generator import create_task_generator_agent
@@ -82,6 +83,7 @@ def build_review_graph(work_path: str):
         work_path, AgentIdentifier.CODE_REVISION
     )
     tool_reset_node = ToolResetNode()
+    linter_node = LinterNode(work_path)
 
     builder = GraphBuilder()
 
@@ -90,7 +92,12 @@ def build_review_graph(work_path: str):
     builder.add_node(score_evaluator_agent, AgentIdentifier.SCORE_EVALUATOR)
     builder.add_node(task_generator_agent, AgentIdentifier.REVIEW_TASK_GENERATOR)
     builder.add_node(code_revision_agent, AgentIdentifier.CODE_REVISION)
+    builder.add_node(linter_node, "linter")
 
+    # Linter runs first to provide technical issues to the reviewer
+    builder.add_edge("linter", AgentIdentifier.REVIEW)
+
+    # Both evaluators run in parallel after review is complete
     builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.SCORE_EVALUATOR)
     builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.REVIEW_TASK_GENERATOR)
 
@@ -114,12 +121,13 @@ def build_review_graph(work_path: str):
 
     builder.add_edge(
         "tool_reset",
-        AgentIdentifier.REVIEW,
+        "linter",
         condition=needs_revision,
     )
 
-    builder.set_entry_point(AgentIdentifier.REVIEW)
-    builder.set_execution_timeout(5400) # 1h30 max
+    # Linter is the entry point for the first iteration
+    builder.set_entry_point("linter")
+    builder.set_execution_timeout(5400)  # 1h30 max
     builder.reset_on_revisit(True)
 
     return builder.build()

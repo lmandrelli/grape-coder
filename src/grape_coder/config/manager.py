@@ -18,7 +18,7 @@ class ConfigManager:
 
     def __init__(self):
         self._config_dir = Path(platformdirs.user_config_dir("grape-coder"))
-        self._config_file = self._config_dir / "providers.json"
+        self._config_file = self._config_dir / "config.json"
         self.config: Optional[GrapeCoderConfig] = None
         self._model_cache: dict[str, Any] = {}
         self._dropped_items: dict[str, list[str]] = {
