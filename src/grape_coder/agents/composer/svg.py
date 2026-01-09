@@ -18,6 +18,11 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.targeted_edit import (
+    str_replace_svg,
+    pattern_replace_svg,
+    insert_text_svg,
+)
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
@@ -54,6 +59,9 @@ Available tools:
 - list_files_svg: List files and directories in the svg folder
 - read_file_svg: Read contents of one or more SVG files from the svg folder
 - edit_file_svg: Rewrite or create an SVG file (ONLY .svg files allowed), automatically validates SVG syntax and will return an error if the SVG is not properly formatted
+- str_replace_svg: Replace exact text in an SVG file
+- pattern_replace_svg: Replace text using regex patterns in SVG files
+- insert_text_svg: Insert text after a specific line in SVG files
 - grep_files_svg: Search for patterns in SVG files in the svg folder
 - glob_files_svg: Find SVG files using glob patterns in the svg folder
 
@@ -90,6 +98,9 @@ Always output clean, well-documented, production-ready SVG code that passes vali
             list_files_svg,
             read_file_svg,
             edit_file_svg,
+            str_replace_svg,
+            pattern_replace_svg,
+            insert_text_svg,
             grep_files_svg,
             glob_files_svg,
         ],
@@ -99,7 +110,7 @@ Always output clean, well-documented, production-ready SVG code that passes vali
         hooks=[
             get_tool_tracker(AgentIdentifier.SVG),
             get_conversation_tracker(AgentIdentifier.SVG),
-            get_tool_limit_hook(AgentIdentifier.SVG)
+            get_tool_limit_hook(AgentIdentifier.SVG),
         ],
     )
 

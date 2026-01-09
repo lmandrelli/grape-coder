@@ -15,6 +15,11 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.targeted_edit import (
+    str_replace_css,
+    pattern_replace_css,
+    insert_text_css,
+)
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
@@ -56,6 +61,9 @@ Available tools:
 - list_files_css: List files and directories in the style folder
 - read_file_css: Read contents of one or more CSS files from the style folder
 - edit_file_css: Rewrite or create a CSS file (ONLY .css files allowed)
+- str_replace_css: Replace exact text in a CSS file
+- pattern_replace_css: Replace text using regex patterns in CSS files
+- insert_text_css: Insert text after a specific line in CSS files
 - grep_files_css: Search for patterns in CSS files in the style folder
 - glob_files_css: Find CSS files using glob patterns in the style folder
 
@@ -100,6 +108,9 @@ Always output clean, well-documented, production-ready CSS code.
             list_files_css,
             read_file_css,
             edit_file_css,
+            str_replace_css,
+            pattern_replace_css,
+            insert_text_css,
             grep_files_css,
             glob_files_css,
         ],
@@ -109,7 +120,7 @@ Always output clean, well-documented, production-ready CSS code.
         hooks=[
             get_tool_tracker(AgentIdentifier.GENERATE_CLASS),
             get_conversation_tracker(AgentIdentifier.GENERATE_CLASS),
-            get_tool_limit_hook(AgentIdentifier.GENERATE_CLASS)
+            get_tool_limit_hook(AgentIdentifier.GENERATE_CLASS),
         ],
     )
 

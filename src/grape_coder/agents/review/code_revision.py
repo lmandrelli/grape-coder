@@ -20,6 +20,11 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.targeted_edit import (
+    str_replace_code,
+    pattern_replace_code,
+    insert_text_code,
+)
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
@@ -68,6 +73,9 @@ Available tools:
 - list_files: List files and directories in a path (automatically called at startup)
 - read_file: Read contents of one or more files
 - edit_file: Rewrite or create a file with new content
+- str_replace_web: Replace exact text in .html, .js, .css, .svg, .json, .md files
+- pattern_replace_web: Replace text using regex patterns in web files
+- insert_text_web: Insert text after a specific line in web files
 - grep_files: Search for patterns in files
 - glob_files: Find files using glob patterns
 - fetch_url: Fetch content from a URL
@@ -83,6 +91,9 @@ The workspace exploration will be automatically provided to you at the start."""
             list_files,
             read_file,
             edit_file_code,
+            str_replace_code,
+            pattern_replace_code,
+            insert_text_code,
             grep_files,
             glob_files,
             fetch_url,

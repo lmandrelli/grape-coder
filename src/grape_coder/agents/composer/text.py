@@ -15,6 +15,11 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.targeted_edit import (
+    str_replace_md,
+    pattern_replace_md,
+    insert_text_md,
+)
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
@@ -62,6 +67,9 @@ Available tools:
 - list_files_contents: List files and directories in the contents folder
 - read_file_contents: Read contents of one or more files from the contents folder
 - edit_file_contents: Rewrite or create a Markdown file (ONLY .md files allowed)
+- str_replace_md: Replace exact text in a Markdown file
+- pattern_replace_md: Replace text using regex patterns in Markdown files
+- insert_text_md: Insert text after a specific line in Markdown files
 - grep_files_contents: Search for patterns in files in the contents folder
 - glob_files_contents: Find files using glob patterns in the contents folder
 
@@ -91,6 +99,9 @@ Always match the brand voice and target audience specified in your tasks.
             list_files_contents,
             read_file_contents,
             edit_file_contents,
+            str_replace_md,
+            pattern_replace_md,
+            insert_text_md,
             grep_files_contents,
             glob_files_contents,
         ],
@@ -100,7 +111,7 @@ Always match the brand voice and target audience specified in your tasks.
         hooks=[
             get_tool_tracker(AgentIdentifier.TEXT),
             get_conversation_tracker(AgentIdentifier.TEXT),
-            get_tool_limit_hook(AgentIdentifier.TEXT)
+            get_tool_limit_hook(AgentIdentifier.TEXT),
         ],
     )
     return NoInputGraphNode(agent=agent)
