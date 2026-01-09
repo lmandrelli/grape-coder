@@ -94,14 +94,13 @@ def build_review_graph(work_path: str):
     builder.add_node(code_revision_agent, AgentIdentifier.CODE_REVISION)
     builder.add_node(linter_node, "linter")
 
-    builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.SCORE_EVALUATOR)
-    builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.REVIEW_TASK_GENERATOR)
+    builder.add_edge(AgentIdentifier.REVIEW, "linter")
     builder.add_edge("linter", AgentIdentifier.SCORE_EVALUATOR)
     builder.add_edge("linter", AgentIdentifier.REVIEW_TASK_GENERATOR)
 
     parallel_review_agents = [
-        AgentIdentifier.REVIEW.value,
-        "linter",
+        AgentIdentifier.SCORE_EVALUATOR,
+        AgentIdentifier.REVIEW_TASK_GENERATOR,
     ]
     evaluation_done = all_review_agents_complete(parallel_review_agents)
 
