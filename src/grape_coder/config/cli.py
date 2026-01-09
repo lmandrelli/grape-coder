@@ -130,6 +130,22 @@ def show_config_status(config: GrapeCoderConfig) -> None:
 
     console.print(agents_table)
 
+    # Workflow Steps table
+    steps_table = Table(title="Workflow Steps")
+    steps_table.add_column("Step", style="cyan")
+    steps_table.add_column("Status", style="green")
+
+    if config.workflow and config.workflow.steps_enabled:
+        for step in WorkflowStep:
+            is_enabled = config.workflow.steps_enabled[step]
+            status = "[green]Enabled[/green]" if is_enabled else "[red]Disabled[/red]"
+            steps_table.add_row(step.value, status)
+    else:
+        for step in WorkflowStep:
+            steps_table.add_row(step.value, "[green]Enabled[/green]")
+
+    console.print(steps_table)
+
 
 def remove_provider(config: GrapeCoderConfig) -> None:
     """Remove a provider configuration."""
