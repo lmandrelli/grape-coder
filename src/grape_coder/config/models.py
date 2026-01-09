@@ -47,6 +47,10 @@ class GrapeCoderConfig(BaseModel):
     agents: Dict[str, AgentConfig] = Field(
         default_factory=dict, description="Agent configurations"
     )
+    eslint_command: Optional[str] = Field(
+        default='npx eslint "**/*.{js,html,css}" --format json',
+        description="Command to run ESLint",
+    )
 
     @model_validator(mode="after")
     def validate_agent_providers(self):

@@ -47,10 +47,12 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         console.print("1. Add a provider")
         console.print("2. Remove a provider")
         console.print("3. Setup models for agents")
-        console.print("4. Exit")
+        console.print("4. Configure ESLint command")
+        console.print("5. Exit")
 
         choice = prompt(
-            "Select an option (1-4): ", validator=choice_validator(["1", "2", "3", "4"])
+            "Select an option (1-5): ",
+            validator=choice_validator(["1", "2", "3", "4", "5"]),
         )
 
         if choice == "1":
@@ -60,6 +62,8 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         elif choice == "3":
             map_models_to_agents(config)
         elif choice == "4":
+            configure_eslint_command(config)
+        elif choice == "5":
             # Save and exit
             try:
                 config_manager.save_config(config)
@@ -332,3 +336,28 @@ def add_provider(config: GrapeCoderConfig) -> None:
 
     except Exception as e:
         console.print(f"[red]Error creating provider: {e}[/red]")
+
+
+def configure_eslint_command(config: GrapeCoderConfig) -> None:
+    """Configure the ESLint command."""
+    console.print("\n[bold]Configure ESLint Command[/bold]")
+
+    current_command = (
+        config.eslint_command or 'npx eslint "**/*.{js,html,css}" --format json'
+    )
+    console.print(f"Current command: {current_command}")
+
+    console.print("\nEnter new ESLint command (or press Enter to keep current):")
+    new_command = prompt("ESLint command: ").strip()
+
+    if new_command:
+        config.eslint_command = new_command
+        console.print("[green]ESLint command updated successfully.[/green]")
+
+        config_manager = get_config_manager()
+        config_manager.save_config(config)
+        console.print(
+            f"[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
+        )
+    else:
+        console.print("[yellow]ESLint command unchanged.[/yellow]")

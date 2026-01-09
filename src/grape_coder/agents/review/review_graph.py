@@ -13,6 +13,7 @@ from grape_coder.agents.review.review_xml_utils import (
 )
 from grape_coder.agents.identifiers import AgentIdentifier
 from grape_coder.agents.review.code_revision import create_code_revision_agent
+from grape_coder.agents.review.eslint_node import ESLintNode
 from grape_coder.agents.review.reviewer import create_reviewer_agent
 from grape_coder.agents.review.score_evaluator import create_score_evaluator_agent
 from grape_coder.agents.review.review_task_generator import create_task_generator_agent
@@ -82,6 +83,7 @@ def build_review_graph(work_path: str):
         work_path, AgentIdentifier.CODE_REVISION
     )
     tool_reset_node = ToolResetNode()
+    eslint_node = ESLintNode(work_path)
 
     builder = GraphBuilder()
 
@@ -90,13 +92,16 @@ def build_review_graph(work_path: str):
     builder.add_node(score_evaluator_agent, AgentIdentifier.SCORE_EVALUATOR)
     builder.add_node(task_generator_agent, AgentIdentifier.REVIEW_TASK_GENERATOR)
     builder.add_node(code_revision_agent, AgentIdentifier.CODE_REVISION)
+    builder.add_node(eslint_node, "eslint_linter")
 
     builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.SCORE_EVALUATOR)
     builder.add_edge(AgentIdentifier.REVIEW, AgentIdentifier.REVIEW_TASK_GENERATOR)
+    builder.add_edge("eslint_linter", AgentIdentifier.SCORE_EVALUATOR)
+    builder.add_edge("eslint_linter", AgentIdentifier.REVIEW_TASK_GENERATOR)
 
     parallel_review_agents = [
-        AgentIdentifier.SCORE_EVALUATOR,
-        AgentIdentifier.REVIEW_TASK_GENERATOR,
+        AgentIdentifier.REVIEW.value,
+        "eslint_linter",
     ]
     evaluation_done = all_review_agents_complete(parallel_review_agents)
 
@@ -119,7 +124,7 @@ def build_review_graph(work_path: str):
     )
 
     builder.set_entry_point(AgentIdentifier.REVIEW)
-    builder.set_execution_timeout(5400) # 1h30 max
+    builder.set_execution_timeout(5400)  # 1h30 max
     builder.reset_on_revisit(True)
 
     return builder.build()
