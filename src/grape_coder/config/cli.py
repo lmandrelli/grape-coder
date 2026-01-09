@@ -47,7 +47,7 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         console.print("1. Add a provider")
         console.print("2. Remove a provider")
         console.print("3. Setup models for agents")
-        console.print("4. Configure ESLint command")
+        console.print("4. Configure linter commands")
         console.print("5. Exit")
 
         choice = prompt(
@@ -62,7 +62,7 @@ def main_menu(config_manager: ConfigManager, config: GrapeCoderConfig) -> None:
         elif choice == "3":
             map_models_to_agents(config)
         elif choice == "4":
-            configure_eslint_command(config)
+            configure_linter_commands(config)
         elif choice == "5":
             # Save and exit
             try:
@@ -338,26 +338,49 @@ def add_provider(config: GrapeCoderConfig) -> None:
         console.print(f"[red]Error creating provider: {e}[/red]")
 
 
-def configure_eslint_command(config: GrapeCoderConfig) -> None:
-    """Configure the ESLint command."""
-    console.print("\n[bold]Configure ESLint Command[/bold]")
+def configure_linter_commands(config: GrapeCoderConfig) -> None:
+    """Configure the linter commands."""
+    from grape_coder.config.models import LinterConfig
 
-    current_command = (
-        config.eslint_command or 'npx eslint "**/*.{js,html,css}" --format json'
+    console.print("\n[bold]Configure Linter Commands[/bold]")
+
+    current_config = config.linter_commands
+
+    console.print("\nAvailable linters:")
+    console.print(f"1. oxlint: {current_config.oxlint}")
+    console.print(f"2. markuplint: {current_config.markuplint}")
+    console.print(f"3. purgecss: {current_config.purgecss}")
+    console.print(f"4. linkinator: {current_config.linkinator}")
+
+    console.print("\nSelect a linter to configure (1-4) or 0 to reset all:")
+    choice = prompt(
+        "Select an option (0-4): ",
+        validator=choice_validator(["0", "1", "2", "3", "4"]),
     )
-    console.print(f"Current command: {current_command}")
 
-    console.print("\nEnter new ESLint command (or press Enter to keep current):")
-    new_command = prompt("ESLint command: ").strip()
-
-    if new_command:
-        config.eslint_command = new_command
-        console.print("[green]ESLint command updated successfully.[/green]")
-
-        config_manager = get_config_manager()
-        config_manager.save_config(config)
-        console.print(
-            f"[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
-        )
+    if choice == "0":
+        config.linter_commands = LinterConfig()
+        console.print("[green]Linter commands reset to defaults.[/green]")
     else:
-        console.print("[yellow]ESLint command unchanged.[/yellow]")
+        linter_fields = ["oxlint", "markuplint", "purgecss", "linkinator"]
+        selected_field = linter_fields[int(choice) - 1]
+        current_value = getattr(current_config, selected_field)
+
+        console.print(f"\nConfiguring {selected_field}")
+        console.print(f"Current command: {current_value}")
+
+        new_command = prompt(f"New command for {selected_field}: ").strip()
+
+        if new_command:
+            setattr(config.linter_commands, selected_field, new_command)
+            console.print(
+                f"[green]{selected_field} command updated successfully.[/green]"
+            )
+        else:
+            console.print(f"[yellow]{selected_field} command unchanged.[/yellow]")
+
+    config_manager = get_config_manager()
+    config_manager.save_config(config)
+    console.print(
+        f"[green]Configuration saved to: {config_manager.get_config_path()}[/green]"
+    )
