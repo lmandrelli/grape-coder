@@ -218,6 +218,7 @@ def code(
             "[bold blue]Grape Coder is ready! Type 'exit' to quit.[/bold blue]"
         )
 
+        first_run = True
         while True:
             try:
                 user_input = console.input("\n[bold cyan]You:[/bold cyan] ")
@@ -240,11 +241,19 @@ def code(
                 console.print("[bold green]Agent:[/bold green]")
 
                 config_manager = get_config_manager()
-                if config_manager.config and config_manager.config.workflow:
-                    workflow_config = config_manager.config.workflow
-                    steps_enabled = workflow_config.steps_enabled
+                if first_run:
+                    if config_manager.config and config_manager.config.workflow:
+                        workflow_config = config_manager.config.workflow
+                        steps_enabled = workflow_config.steps_enabled
+                    else:
+                        steps_enabled = {step: True for step in WorkflowStep}
+                    first_run = False
                 else:
-                    steps_enabled = {step: True for step in WorkflowStep}
+                    steps_enabled = {
+                        WorkflowStep.PLAN: False,
+                        WorkflowStep.CODE: False,
+                        WorkflowStep.REVIEW: True,
+                    }
 
                 complete_plan = user_input
                 graph_input = user_input
