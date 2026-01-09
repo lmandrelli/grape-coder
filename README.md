@@ -27,6 +27,19 @@ Or with `uv`:
 uv pip install grape-coder
 ```
 
+### Prerequisites
+
+The Review Graph requires the following linters to be installed with npx:
+
+```bash
+npx oxlint
+npx markuplint
+npx purgecss
+npx linkinator
+```
+
+These linters run automatically during the code review process to ensure code quality.
+
 ## Config
 Grape Coder uses a secure JSON configuration system supporting multiple AI providers through LiteLLM. Here is a simplified example of the configuration file:
 
