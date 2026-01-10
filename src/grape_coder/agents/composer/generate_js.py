@@ -16,6 +16,11 @@ from grape_coder.tools.work_path import (
     read_file,
     set_work_path,
 )
+from grape_coder.tools.targeted_edit import (
+    str_replace_js,
+    pattern_replace_js,
+    insert_text_js,
+)
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
 
@@ -76,6 +81,9 @@ AVAILABLE TOOLS:
 - list_files_js: List files in the scripts folder
 - read_file_js: Read script files
 - edit_file_js: Rewrite or create a JavaScript file (ONLY .js files allowed)
+- str_replace_js: Replace exact text in a JavaScript file
+- pattern_replace_js: Replace text using regex patterns in JavaScript files
+- insert_text_js: Insert text after a specific line in JavaScript files
 - grep_files_js: Search within script files
 - glob_files_js: Find script files using glob patterns
 
@@ -96,6 +104,9 @@ Always produce production-ready, well-documented, and testable JavaScript code t
             list_files_js,
             read_file_js,
             edit_file_js,
+            str_replace_js,
+            pattern_replace_js,
+            insert_text_js,
             grep_files_js,
             glob_files_js,
         ],
@@ -105,7 +116,7 @@ Always produce production-ready, well-documented, and testable JavaScript code t
         hooks=[
             get_tool_tracker(AgentIdentifier.GENERATE_JS),
             get_conversation_tracker(AgentIdentifier.GENERATE_JS),
-            get_tool_limit_hook(AgentIdentifier.GENERATE_JS)
+            get_tool_limit_hook(AgentIdentifier.GENERATE_JS),
         ],
     )
 
