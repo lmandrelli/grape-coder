@@ -1,5 +1,7 @@
-from typing import cast
+from typing import cast, List
+import re
 
+from rich.console import Console
 from strands import Agent, tool
 from strands.agent import AgentResult
 from strands.models.model import Model
@@ -27,17 +29,12 @@ from grape_coder.tools.targeted_edit import (
 )
 from grape_coder.tools.tool_limit_hooks import get_tool_limit_hook
 
+console = Console()
 
-def create_code_revision_agent(
-    work_path: str, agent_id: AgentIdentifier
-) -> MultiAgentBase:
-    """Create a code revision agent that fixes code based on review feedback."""
-    set_work_path(work_path)
 
-    config_manager = get_config_manager()
-    model = cast(Model, config_manager.get_model(agent_id))
-
-    system_prompt = """You are a Code Revision Specialist working in a multi-agent web development system.
+def get_base_system_prompt() -> str:
+    """Get the base system prompt for code revision."""
+    return """You are a Code Revision Specialist working in a multi-agent web development system.
 
 CONTEXT:
 A code reviewer has analyzed the website code and provided feedback containing:
@@ -66,8 +63,19 @@ WORKFLOW:
     c. Make the necessary edits
     d. Verify the changes address the issue
 
+IMPORTANT - FIX SUMMARY REQUIREMENT:
+At the END of your work, you MUST provide a summary of fixes applied in the following format:
+
+<fixes_applied>
+    <fix>Brief description of fix 1</fix>
+    <fix>Brief description of fix 2</fix>
+    ...
+</fixes_applied>
+
+This summary is critical for tracking progress across review iterations.
+
 GOAL:
-Fix all issues in the task list to improve the code quality.
+Fix all issues in the task list to improve the code quality. Provide a summary of all fixes at the end.
 
 Available tools:
 - list_files: List files and directories in a path (automatically called at startup)
@@ -83,9 +91,57 @@ Available tools:
 
 The workspace exploration will be automatically provided to you at the start."""
 
+
+def extract_fixes_from_response(response_text: str) -> List[str]:
+    """Extract the list of fixes from the agent's response.
+
+    Looks for the <fixes_applied> XML block and extracts individual fixes.
+    """
+    fixes = []
+
+    # Try to extract from XML format
+    fixes_match = re.search(
+        r"<fixes_applied>(.*?)</fixes_applied>", response_text, re.DOTALL
+    )
+    if fixes_match:
+        fixes_content = fixes_match.group(1)
+        fix_matches = re.findall(r"<fix>(.*?)</fix>", fixes_content, re.DOTALL)
+        fixes = [fix.strip() for fix in fix_matches if fix.strip()]
+
+    # If no XML format, try to extract from common patterns
+    if not fixes:
+        # Look for numbered lists
+        numbered_fixes = re.findall(
+            r"\d+\.\s+(?:Fixed|Added|Updated|Removed|Corrected|Improved)[^.]+\.",
+            response_text,
+        )
+        if numbered_fixes:
+            fixes = [fix.strip() for fix in numbered_fixes]
+
+    # If still no fixes, try bullet points
+    if not fixes:
+        bullet_fixes = re.findall(
+            r"[-*]\s+(?:Fixed|Added|Updated|Removed|Corrected|Improved)[^.\n]+",
+            response_text,
+        )
+        if bullet_fixes:
+            fixes = [fix.strip() for fix in bullet_fixes]
+
+    return fixes
+
+
+def create_code_revision_agent(
+    work_path: str, agent_id: AgentIdentifier
+) -> MultiAgentBase:
+    """Create a code revision agent that fixes code based on review feedback."""
+    set_work_path(work_path)
+
+    config_manager = get_config_manager()
+    model = cast(Model, config_manager.get_model(agent_id))
+
     return CodeRevisionNode(
         model=model,
-        system_prompt=system_prompt,
+        system_prompt=get_base_system_prompt(),
         work_path=work_path,
         tools=[
             list_files,
@@ -119,7 +175,7 @@ def edit_file_code(path: str, content: str) -> str:
 
 
 class CodeRevisionNode(MultiAgentBase):
-    """Custom node that handles code revision with workspace exploration."""
+    """Custom node that handles code revision with workspace exploration and fix tracking."""
 
     def __init__(
         self,
@@ -138,11 +194,17 @@ class CodeRevisionNode(MultiAgentBase):
         self.agent_id = agent_id
         self.hooks = hooks or []
 
-    def _create_agent(self) -> Agent:
+    def _create_agent(self, context_prompt: str) -> Agent:
+        """Create the agent with optional context prepended."""
+        if context_prompt:
+            full_prompt = f"{context_prompt}\n\n{self.system_prompt}"
+        else:
+            full_prompt = self.system_prompt
+
         return Agent(
             model=self.model,
             tools=self.tools,
-            system_prompt=self.system_prompt,
+            system_prompt=full_prompt,
             name=self.agent_id,
             description=get_agent_description(self.agent_id),
             hooks=self.hooks,
@@ -176,7 +238,30 @@ class CodeRevisionNode(MultiAgentBase):
                     },
                 )
 
-            agent = self._create_agent()
+            # Get context from review history
+            from grape_coder.agents.review.review_graph import get_review_context
+
+            context = get_review_context()
+            context_prompt = ""
+
+            # Add context about previous fixes if this is not the first iteration
+            if context.current_iteration > 1:
+                previous_fixes = context.get_all_fixes_applied()
+                if previous_fixes:
+                    context_prompt = f"""=== PREVIOUS ITERATION CONTEXT ===
+Iteration: {context.current_iteration} of {context.max_iterations}
+
+FIXES ALREADY APPLIED IN PREVIOUS ITERATIONS:
+{chr(10).join(f"- {fix}" for fix in previous_fixes[:10])}
+
+IMPORTANT:
+- Do NOT re-apply fixes that were already made
+- Focus on NEW issues identified in this iteration's review
+- If a previous fix didn't work, try a DIFFERENT approach
+================================
+"""
+
+            agent = self._create_agent(context_prompt)
 
             exploration_result = list_files(path=self.work_path, recursive=True)
 
@@ -186,9 +271,28 @@ class CodeRevisionNode(MultiAgentBase):
 REVISION TASKS TO COMPLETE:
 {task_str}
 
-Please fix all the issues mentioned in the revision tasks. Focus on the most important issues first."""
+Please fix all the issues mentioned in the revision tasks. Focus on the most important issues first.
+
+REMINDER: At the end of your work, provide a <fixes_applied> summary listing all fixes you made."""
 
             response = await agent.invoke_async(workspace_context)
+
+            # Extract response text
+            response_text = str(response)
+
+            # Extract fixes and store them in context
+            fixes = extract_fixes_from_response(response_text)
+            if fixes:
+                # Update the most recent iteration with fixes
+                if context.iterations:
+                    context.iterations[-1].fixes_applied = fixes
+                console.print(
+                    f"[green]Recorded {len(fixes)} fixes from this iteration[/green]"
+                )
+                for i, fix in enumerate(fixes[:5], 1):
+                    console.print(f"  [dim]{i}. {fix[:80]}...[/dim]")
+                if len(fixes) > 5:
+                    console.print(f"  [dim]... and {len(fixes) - 5} more[/dim]")
 
             agent_result = AgentResult(
                 stop_reason="end_turn",
@@ -197,7 +301,7 @@ Please fix all the issues mentioned in the revision tasks. Focus on the most imp
                 message=response.message
                 if hasattr(response, "message")
                 else Message(
-                    role="assistant", content=[ContentBlock(text=str(response))]
+                    role="assistant", content=[ContentBlock(text=response_text)]
                 ),
             )
 
